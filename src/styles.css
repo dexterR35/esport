@@ -92,33 +92,28 @@ button {
   contain: layout paint style;
 }
 
+/* Spațiul dintre boxuri: fiecare box se retrage cu jumătate din gap pe fiecare latură,
+   deci între două boxuri vecine rămâne exact `tiles.gap` din settings.js. */
 .sport-tile__reveal {
   position: absolute;
-  inset: 0;
+  inset: calc(var(--tile-gap, 0px) / 2);
 }
 
 .sport-tile__button {
   position: relative;
   display: block;
-  container-type: inline-size;
+  /* `size` permite unități cqmin: textul crește după latura cea mai scurtă a boxului. */
+  container-type: size;
   width: 100%;
   height: 100%;
   padding: 0;
   overflow: hidden;
   cursor: pointer;
-  border: 1px solid rgba(170, 184, 216, 0.3);
+  border: 0;
   border-radius: 0;
   color: #f3f5fa;
   text-align: left;
-  background:
-    linear-gradient(145deg, color-mix(in srgb, var(--tile-color), transparent 84%), transparent 48%),
-    #111722;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.025);
-  transition:
-    transform 350ms cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 220ms ease,
-    background 220ms ease,
-    box-shadow 300ms ease;
+  background: #111722;
 }
 
 .sport-tile__button::before {
@@ -134,37 +129,30 @@ button {
   opacity: 0.7;
 }
 
-.sport-tile__button::after {
+.sport-tile__button:focus {
+  outline: none;
+}
+
+/* Focus de la tastatură: contur alb în interiorul boxului, peste poză. */
+.sport-tile__button:focus-visible::after {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 4;
   content: "";
   pointer-events: none;
-  border-top: 3px solid color-mix(in srgb, var(--tile-color), white 12%);
-  opacity: 0.68;
-}
-
-.sport-tile__button:hover,
-.sport-tile__button:focus-visible {
-  z-index: 5;
-  border-color: color-mix(in srgb, var(--tile-color), white 42%);
-  background:
-    linear-gradient(145deg, color-mix(in srgb, var(--tile-color), transparent 74%), transparent 54%),
-    #151c29;
-  box-shadow:
-    0 27px 58px rgba(0, 0, 0, 0.38),
-    0 0 0 2px color-mix(in srgb, var(--tile-color), transparent 66%);
-  outline: none;
-  transform: scale(1.012);
-}
-
-.sport-tile__button:active {
-  transform: scale(0.994);
+  outline: 2px solid #fff;
+  outline-offset: -2px;
 }
 
 .map-viewport--dragging .sport-tile__button {
   pointer-events: none;
   transition: none;
+}
+
+@media (hover: none) {
+  .sport-tile__button:hover .sport-tile__media {
+    transform: none;
+  }
 }
 
 .sport-tile__media {
@@ -176,9 +164,12 @@ button {
   object-fit: cover;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 260ms ease;
+  transition:
+    opacity 260ms ease,
+    transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Poza devine vizibilă după ce s-a încărcat și decodat (clasa vine din useProgressiveImages). */
 .sport-tile__media--loaded {
   opacity: 1;
 }
@@ -187,26 +178,51 @@ button {
   transition: none;
 }
 
-/* Placeholder instant: versiunea de 24px, mărită și blurată, stă sub imaginea reală. */
-.sport-tile__blur {
-  position: absolute;
-  inset: -12px;
-  z-index: 1;
-  background-color: var(--tile-color);
-  background-position: center;
-  background-size: cover;
-  filter: blur(14px);
-  pointer-events: none;
+/* Parallax la hover: doar poza de sub mouse se mișcă, în interiorul boxului, în sens opus
+   mouse-ului; e mărită puțin ca marginile să nu apară. Boxul, titlul și logo-ul rămân fixe.
+   --tilt-x / --tilt-y (-0.5…0.5) vin din MapTile. Transform-ul e pus DOAR la hover: un
+   transform pe toate cele ~300 de poze le-ar face straturi GPU separate și ar înjumătăți FPS-ul.
+   Fără `will-change`: ar face browserul să scaleze o copie rasterizată, iar poza ar părea neclară. */
+.sport-tile__button:hover .sport-tile__media {
+  transform:
+    translate(
+      calc(var(--tilt-x, 0) * -1 * var(--tile-hover-parallax, 12px)),
+      calc(var(--tilt-y, 0) * -1 * var(--tile-hover-parallax, 12px))
+    )
+    scale(1.08);
 }
 
-.sport-tile--has-image .brand-slot__title {
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+/* Indicator de încărcare: un inel mic în centrul boxului, doar cât poza se descarcă.
+   Animația rulează numai în starea „loading”, deci boxurile încărcate nu consumă nimic. */
+.sport-tile__loader {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  width: clamp(22px, 12cqmin, 40px);
+  aspect-ratio: 1;
+  margin: calc(clamp(22px, 12cqmin, 40px) / -2) 0 0 calc(clamp(22px, 12cqmin, 40px) / -2);
+  border: 2px solid rgba(224, 231, 245, 0.14);
+  border-top-color: rgba(255, 63, 91, 0.9);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.sport-tile__media[data-load-state="loading"] ~ .sport-tile__loader {
+  opacity: 1;
+  animation: tile-loader-spin 800ms linear infinite;
+}
+
+@keyframes tile-loader-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Grila decorativă devine un gradient jos, ca titlul să rămână lizibil peste imagine. */
 .sport-tile--has-image .sport-tile__button::before {
   z-index: 2;
-  background: linear-gradient(to top, rgba(4, 6, 11, 0.72), transparent 38%);
+  background: linear-gradient(to top, rgba(4, 6, 11, 0.85) 0%, rgba(4, 6, 11, 0.45) 22%, transparent 48%);
   background-size: auto;
   opacity: 1;
 }
@@ -225,7 +241,6 @@ button {
 .brand-slot__logo img {
   width: clamp(80px, var(--tile-logo-width, 38%), 520px);
   height: auto;
-  filter: drop-shadow(0 8px 28px rgba(0, 0, 0, 0.6));
 }
 
 .sport-tile--has-logo .brand-slot__placeholder {
@@ -250,44 +265,53 @@ button {
   width: clamp(28px, 18%, 76px);
   aspect-ratio: 1;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--tile-color), white 28%);
+  border: 1px solid rgba(224, 231, 245, 0.18);
   border-radius: 50%;
   color: color-mix(in srgb, var(--tile-color), white 52%);
   background: rgba(7, 10, 17, 0.36);
   font-size: clamp(11px, 3.5cqw, 25px);
   font-weight: 520;
-  box-shadow: 0 0 30px color-mix(in srgb, var(--tile-color), transparent 82%);
 }
 
-/* Titlu mic în partea de jos a fiecărui box: numele din slots.json + numărul slotului. */
+/* Titlul jos în stânga, numărul boxului jos în dreapta, pe același rând.
+   Mărimea urmează latura cea mai scurtă a boxului (cqmin), între tiles.titleMin și
+   tiles.titleMax din settings.js; marginile cresc odată cu textul. */
 .brand-slot__title {
   position: absolute;
   z-index: 3;
-  right: 12px;
-  bottom: 10px;
-  left: 12px;
+  right: 0.9em;
+  bottom: 0.85em;
+  left: 0.9em;
   display: flex;
-  gap: 8px;
+  gap: 0.6em;
   align-items: baseline;
   justify-content: space-between;
+  font-size: clamp(
+    var(--tile-title-min, 16px),
+    calc(var(--tile-title-scale, 6.5) * 1cqmin),
+    var(--tile-title-max, 32px)
+  );
   pointer-events: none;
 }
 
 .brand-slot__title strong {
+  min-width: 0;
   overflow: hidden;
-  font-size: var(--tile-title-size, 13px);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
+  font-size: 1em;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Numărul boxului (pentru slots.json): discret, jos în dreapta. */
 .brand-slot__title small {
   flex: 0 0 auto;
-  color: rgba(224, 231, 245, 0.5);
+  color: rgba(224, 231, 245, 0.55);
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 10px;
+  font-size: max(10px, 0.45em);
+  letter-spacing: 0.04em;
 }
 
 .sport-tile--hero {
@@ -295,41 +319,12 @@ button {
 }
 
 .sport-tile--hero .sport-tile__button {
-  border-color: color-mix(in srgb, var(--tile-color), white 38%);
-  border-radius: 0;
-  background:
-    radial-gradient(circle at 50% 46%, color-mix(in srgb, var(--tile-color), transparent 68%), transparent 44%),
-    linear-gradient(135deg, rgba(34, 45, 71, 0.96), #0d121d 67%);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.055);
+  background: #0d121d;
 }
 
 .sport-tile--hero .brand-slot__mark {
   width: 96px;
   font-size: 31px;
-}
-
-.sport-tile--hero .brand-slot__title {
-  right: 18px;
-  bottom: 14px;
-  left: 18px;
-}
-
-.sport-tile--hero .brand-slot__title strong {
-  font-size: var(--tile-title-size-center, 16px);
-}
-
-.sport-tile--hero .brand-slot__title small {
-  font-size: 11px;
-}
-
-.sport-tile--small .brand-slot__title {
-  right: 8px;
-  bottom: 7px;
-  left: 8px;
-}
-
-.sport-tile--small .brand-slot__title strong {
-  font-size: var(--tile-title-size-small, 12px);
 }
 
 .sport-tile--small.sport-tile--square .brand-slot__mark {
@@ -387,9 +382,8 @@ button {
 
 .hero-action--outline {
   border: 1px solid rgba(255, 255, 255, 0.66);
-  background: rgba(7, 10, 17, 0.7);
+  background: rgba(7, 10, 17, 0.9);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(14px);
 }
 
 .hero-action--outline:hover {
@@ -416,9 +410,8 @@ button {
   border: 1px solid rgba(141, 164, 218, 0.58);
   border-radius: 999px;
   color: rgba(242, 246, 255, 0.94);
-  background: rgba(8, 12, 21, 0.86);
+  background: rgba(7, 10, 17, 0.9);
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.34);
-  backdrop-filter: blur(14px);
   font-size: 12px;
   font-weight: 650;
   animation: center-control-in 220ms ease both;
@@ -443,6 +436,61 @@ button {
   stroke: currentColor;
   stroke-linecap: round;
   stroke-width: 1.6;
+}
+
+/* Tab-uri pentru varianta de hartă: stânga jos, deasupra hărții. */
+.layout-tabs {
+  position: fixed;
+  z-index: 5;
+  left: max(28px, env(safe-area-inset-left));
+  bottom: max(24px, env(safe-area-inset-bottom));
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(134, 153, 193, 0.42);
+  border-radius: 999px;
+  background: rgba(7, 10, 17, 0.9);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.32);
+}
+
+.layout-tab {
+  display: inline-flex;
+  gap: 7px;
+  align-items: baseline;
+  min-height: 40px;
+  padding: 0 16px;
+  cursor: pointer;
+  border: 0;
+  border-radius: 999px;
+  color: rgba(225, 232, 244, 0.72);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 630;
+  line-height: 40px;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.layout-tab:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.layout-tab[aria-checked="true"] {
+  color: #fff;
+  background: linear-gradient(145deg, #ff3f5b, #ea1737);
+}
+
+.layout-tab:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.layout-tab__count {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.7;
 }
 
 .map-hint {
@@ -480,9 +528,8 @@ button {
   padding: 0 17px;
   border: 1px solid rgba(134, 153, 193, 0.42);
   border-radius: 999px;
-  background: rgba(7, 10, 17, 0.74);
+  background: rgba(7, 10, 17, 0.9);
   box-shadow: 0 12px 35px rgba(0, 0, 0, 0.32);
-  backdrop-filter: blur(14px);
   pointer-events: none;
 }
 
@@ -588,17 +635,32 @@ button {
   background-size: 42px 42px;
 }
 
-.modal-visual--media {
-  background-position: center;
-  background-size: cover;
-}
-
 .modal-visual--media img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  opacity: 0;
+  transition: opacity 260ms ease;
+}
+
+.modal-visual--media img.is-loaded {
+  opacity: 1;
+}
+
+/* Același indicator ca pe boxuri, cât poza mare din modal se încarcă. */
+.modal-visual__loader {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border: 2px solid rgba(224, 231, 245, 0.14);
+  border-top-color: rgba(255, 63, 91, 0.9);
+  border-radius: 50%;
+  animation: tile-loader-spin 800ms linear infinite;
 }
 
 .modal-visual--placeholder p {
@@ -647,8 +709,16 @@ button {
 }
 
 .modal-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   padding: 86px 48px 46px;
   background: #0d121b;
+}
+
+.modal-copy > .modal-meta,
+.modal-copy > .subscription-preview {
+  align-self: stretch;
 }
 
 .modal-kicker {
@@ -675,12 +745,16 @@ button {
   line-height: 1.75;
 }
 
+/* Butonul roșu principal: ultimul element din coloana de text, jos în dreapta. */
 .modal-cta {
+  align-self: flex-end;
   display: inline-flex;
   align-items: center;
   gap: 10px;
   min-height: 46px;
-  margin-top: 28px;
+  margin-top: auto;
+  cursor: pointer;
+  font-family: inherit;
   padding: 0 20px;
   border-radius: 999px;
   border: 1px solid #ff3855;
@@ -715,6 +789,7 @@ button {
   display: grid;
   gap: 8px;
   margin-top: 36px;
+  margin-bottom: 28px;
   padding-top: 21px;
   border-top: 1px solid rgba(133, 149, 184, 0.2);
   color: rgba(204, 216, 237, 0.45);
@@ -778,6 +853,18 @@ button {
 }
 
 @media (max-width: 760px) {
+  .layout-tabs {
+    left: max(12px, env(safe-area-inset-left));
+    bottom: max(52px, env(safe-area-inset-bottom));
+  }
+
+  .layout-tab {
+    min-height: 34px;
+    padding: 0 11px;
+    font-size: 12px;
+    line-height: 34px;
+  }
+
   .hero-actions {
     top: max(11px, env(safe-area-inset-top));
     gap: 7px;

@@ -16,7 +16,7 @@ import { SETTINGS } from '../settings';
 import MapTile from './MapTile';
 
 const MapViewport = forwardRef(function MapViewport(
-  { tiles, disabled, onSelect, onZoomChange, onCenterVisibilityChange },
+  { layout, tiles, disabled, onSelect, onZoomChange, onCenterVisibilityChange },
   forwardedRef,
 ) {
   const viewportRef = useRef(null);
@@ -125,7 +125,9 @@ const MapViewport = forwardRef(function MapViewport(
         <div className="map-plane">
           {tiles.map((tile) => (
             <MapTile
-              key={tile.id}
+              // Cheia include varianta: la schimbare, boxurile sunt create din nou
+              // (poze, animație de apariție), nu refolosite cu alt conținut.
+              key={`${layout}:${tile.id}`}
               tile={tile}
               onKeyboardActivate={camera.activateTile}
               onFocus={camera.bringTileIntoView}

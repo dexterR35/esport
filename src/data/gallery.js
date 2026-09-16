@@ -1,5 +1,5 @@
 import { assignImages, sportFromKey } from '../lib/assignImages';
-import { SLOT_COUNT, SLOT_REGIONS } from '../lib/layout';
+import { getSlotRegions } from '../lib/layout';
 import { SETTINGS } from '../settings';
 import slotImages from './slot-images.json';
 import slotContent from './slots.json';
@@ -24,7 +24,9 @@ function resolveImage(key, number, field) {
 }
 
 function resolveCta(cta, number) {
-  if (!cta?.label || !cta?.href) return null;
+  if (!cta?.label) return null;
+  // Fără link, butonul deschide fereastra de abonare din aceeași pagină.
+  if (!cta.href) return { label: cta.label, action: 'subscribe' };
   // Acceptăm doar link-uri http(s), mailto, tel sau relative — niciodată `javascript:`.
   if (!/^(https?:|mailto:|tel:|\/|#)/i.test(cta.href)) {
     console.warn(`slots.json › ${number}.cta: link nepermis "${cta.href}".`);
@@ -38,7 +40,7 @@ function resolveCta(cta, number) {
 }
 
 // Logo-urile stau în public/brand/ și nu trec prin procesarea de imagini,
-// ca să își păstreze transparența (SVG, PNG sau WebP).
+// ca să își păstreze transparența (SVG, PNG sau AVIF).
 function resolveLogo(logo, number) {
   if (!logo?.src) return null;
   if (!/^[a-z0-9][a-z0-9_.-]*\.(svg|png|webp|avif)$/i.test(logo.src)) {
@@ -61,7 +63,9 @@ function sportLabel(sport) {
 
 const numberOf = (index) => String(index + 1).padStart(3, '0');
 
-// ── Distribuirea automată ───────────────────────────────────────────────────
+// ── Poze fixate manual în slots.json ────────────────────────────────────────
+// Numerele din slots.json se aplică în toate variantele de hartă. Doar 001 (bannerul
+// central) este același box peste tot; celelalte numere ajung în alte locuri.
 const fixedImages = new Map();
 const referencedKeys = new Set();
 Object.entries(slotContent).forEach(([number, content]) => {
@@ -77,14 +81,8 @@ const autoPool = gallery.autoAssign
       .filter(([key]) => !isManualKey(key) && !referencedKeys.has(key))
       .map(([key, image]) => ({ key, width: image.width, height: image.height }))
   : [];
-const assignedImages = assignImages(
-  SLOT_REGIONS,
-  autoPool,
-  new Map([...fixedImages].filter(([index]) => index >= 0 && index < SLOT_COUNT)),
-);
 
-// ── Boxurile ────────────────────────────────────────────────────────────────
-export const galleryItems = Array.from({ length: SLOT_COUNT }, (_, index) => {
+function buildItem(index, assignedImages) {
   const number = numberOf(index);
   const featured = index === 0;
   const content = slotContent[number] ?? {};
@@ -98,7 +96,7 @@ export const galleryItems = Array.from({ length: SLOT_COUNT }, (_, index) => {
     ?? (featured ? gallery.centerTitle : label ?? gallery.emptyTitle);
   const cta = resolveCta(content.cta, number)
     ?? resolveCta(
-      gallery.cta && { ...gallery.cta, href: gallery.cta.href.replaceAll('{sport}', sport ?? '') },
+      gallery.cta && { ...gallery.cta, href: (gallery.cta.href ?? '').replaceAll('{sport}', sport ?? '') },
       number,
     );
 
@@ -128,13 +126,28 @@ export const galleryItems = Array.from({ length: SLOT_COUNT }, (_, index) => {
       cta: resolveCta(modal.cta, number) ?? cta,
     },
   };
-});
+}
 
-Object.keys(slotContent)
-  .filter((number) => !/^\d{3}$/.test(number) || Number(number) < 1 || Number(number) > SLOT_COUNT)
-  .forEach((number) => {
-    console.warn(`slots.json › "${number}" nu există în hartă (boxuri 001–${numberOf(SLOT_COUNT - 1)}).`);
-  });
+const itemsCache = new Map();
+
+/** Boxurile unei variante de hartă, cu pozele distribuite automat pe forma ei. */
+export function getGalleryItems(layout) {
+  if (itemsCache.has(layout)) return itemsCache.get(layout);
+
+  const regions = getSlotRegions(layout);
+  const fixed = new Map([...fixedImages].filter(([index]) => index >= 0 && index < regions.length));
+  const assignedImages = assignImages(regions, autoPool, fixed);
+  const items = regions.map((_, index) => buildItem(index, assignedImages));
+
+  Object.keys(slotContent)
+    .filter((number) => !/^\d{3}$/.test(number) || Number(number) < 1 || Number(number) > regions.length)
+    .forEach((number) => {
+      console.warn(`slots.json › "${number}" nu există în varianta „${layout}” (boxuri 001–${numberOf(regions.length - 1)}).`);
+    });
+
+  itemsCache.set(layout, items);
+  return items;
+}
 
 export const heroActions = [
   { id: 'explore', label: 'Explorează', variant: 'outline' },

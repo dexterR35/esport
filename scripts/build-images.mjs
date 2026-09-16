@@ -1,6 +1,6 @@
 // Generează variantele optimizate pentru pozele din images-src/.
 //
-//   images-src/fotbal-01.jpg  -> public/slots/fotbal-01-{400,800,1600,…}.{avif,webp}
+//   images-src/fotbal-01.jpg  -> public/slots/fotbal-01-{400,800,1600,…}.avif
 //
 // Pozele numite `sport-NN` sunt distribuite automat pe boxuri (vezi src/lib/assignImages.js).
 // Numele rezervate pentru poze fixate manual în slots.json: numere ("001") și "-detail".
@@ -24,7 +24,6 @@ const CACHE_PATH = path.join(ROOT, '.cache/slot-images.json');
 const WIDTHS = [...SETTINGS.images.widths].sort((a, b) => a - b);
 const FORMATS = {
   avif: (pipeline) => pipeline.avif({ quality: SETTINGS.images.avifQuality, effort: 3 }),
-  webp: (pipeline) => pipeline.webp({ quality: SETTINGS.images.webpQuality }),
 };
 const SOURCE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.avif', '.tif', '.tiff']);
 const KEY_PATTERN = /^[a-z0-9][a-z0-9_-]*$/i;
@@ -76,11 +75,6 @@ async function processImage(key, sourcePath, cachedSignature, signature) {
   await Promise.all(jobs);
 
   const { dominant } = await image.clone().stats();
-  const blurBuffer = await image
-    .clone()
-    .resize({ width: 24, height: Math.max(1, Math.round((24 * height) / width)) })
-    .webp({ quality: 40 })
-    .toBuffer();
 
   return {
     width,
@@ -89,7 +83,6 @@ async function processImage(key, sourcePath, cachedSignature, signature) {
     color: `#${[dominant.r, dominant.g, dominant.b]
       .map((channel) => channel.toString(16).padStart(2, '0'))
       .join('')}`,
-    blur: `data:image/webp;base64,${blurBuffer.toString('base64')}`,
   };
 }
 
@@ -130,8 +123,9 @@ async function main() {
       next += 1;
       const sourcePath = path.join(SOURCE_DIR, file);
       const { size, mtimeMs } = await stat(sourcePath);
-      // Include setările de imagine: dacă se schimbă calitatea sau lățimile, totul se reface.
-      const signature = `${file}:${size}:${Math.round(mtimeMs)}:${JSON.stringify(SETTINGS.images)}`;
+      // Include lățimile și calitatea: dacă se schimbă, pozele se refac. Alte setări nu contează.
+      const encoding = { widths: SETTINGS.images.widths, avifQuality: SETTINGS.images.avifQuality };
+      const signature = `${file}:${size}:${Math.round(mtimeMs)}:${JSON.stringify(encoding)}`;
       try {
         manifest[key] = await processImage(key, sourcePath, cache[key], signature);
         nextCache[key] = signature;

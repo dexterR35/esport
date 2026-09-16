@@ -8,6 +8,10 @@ export const SETTINGS = {
   // ATENȚIE: schimbarea oricărei valori din `grid` refață mozaicul, deci sloturile
   // își schimbă poziția și numărul. Verifică apoi slots.json.
   grid: {
+    // Varianta de hartă la deschidere: 'actual' | 'module'.
+    // Se poate schimba și din tab-urile din pagină sau din link: ?layout=module
+    layout: 'actual',
+    showLayoutTabs: true, // false = ascunde tab-urile din pagină
     columns: 50, // câte celule pe orizontală
     rows: 32, // câte celule pe verticală
     cellSize: 190, // mărimea unei celule, în px (la zoom 100%)
@@ -17,7 +21,7 @@ export const SETTINGS = {
     // Raport maxim între laturi. Boxurile mai lungi se împart în două:
     // 2 → 1×3, 1×4, 3×1, 4×1 devin câte 2 boxuri; 3 → doar 1×4 și 4×1; 99 → nimic nu se împarte.
     maxAspect: 2,
-    // Împarte anumite boxuri în două (după numărul afișat pe box):
+    // Doar pentru varianta „actual”. Împarte anumite boxuri în două (după numărul afișat pe box):
     // 'columns' = două boxuri alăturate, 'rows' = două boxuri unul peste altul.
     // Boxurile rămân pe celule întregi (ex. 4×3 pe 'rows' → 4×2 sus + 2×1 + 2×1 jos).
     // Bucățile noi primesc numere noi, la finalul listei.
@@ -58,10 +62,16 @@ export const SETTINGS = {
 
   // ── Boxuri ────────────────────────────────────────────────────────────────
   tiles: {
-    titleSize: 13, // px, titlul mic de jos
-    titleSizeSmall: 12, // px, pe boxurile mici
-    titleSizeCenter: 16, // px, pe boxul central
+    gap: 8, // px între boxuri, la zoom 100% din hartă (pe ecran, la start: ~6px)
+    // Titlul de jos crește odată cu boxul: scale × latura cea mai scurtă (în %),
+    // limitat între titleMin și titleMax (px în hartă; pe ecran la start ≈ × 0.76).
+    // Ex.: box 1×1 / 2×1 → 16px, 2×2 / 3×2 → 25px, 3×3 / 4×4 / central → 32px.
+    titleMin: 16,
+    titleMax: 32,
+    titleScale: 6.5,
     logoWidth: 38, // % din lățimea boxului, pentru logo-ul centrat
+    // La hover (doar cu mouse-ul), poza se mișcă lin în interiorul boxului. 0 = oprit.
+    hoverParallax: 12, // px, deplasarea maximă a pozei
     // Culori pentru boxurile fără `color` sau imagine (se folosesc pe rând).
     colors: ['#436cff', '#5c79b8', '#7357d8', '#237e95', '#a44962', '#6d768c'],
     revealDuration: 0.82, // animația de apariție a boxurilor, în secunde
@@ -78,9 +88,10 @@ export const SETTINGS = {
     emptyTitle: 'În curând', // boxurile care încă nu au poză
     // Textul din modal. {sport} este înlocuit cu numele sportului.
     modalBody: 'Descoperă cele mai importante evenimente de {sport} pe NetBet Sport.',
-    // Buton în modal pentru toate boxurile automate. Lasă href gol ca să nu apară.
-    // {sport} din href este înlocuit cu cheia sportului (ex. "fotbal").
-    cta: { label: 'Vezi evenimentele', href: '' },
+    // Butonul roșu din modal, jos în stânga, pentru toate boxurile.
+    // href gol = butonul deschide fereastra „Abonează-te”; cu link = duce la acel link.
+    // {sport} din href este înlocuit cu cheia sportului (ex. "https://…/{sport}" → ".../fotbal").
+    cta: { label: 'Vreau să aflu', href: '' },
     // Numele afișate pentru fiecare sport (cheia = prima parte din numele fișierului).
     // Sporturile care lipsesc de aici sunt afișate cu majusculă: "darts" → "Darts".
     sportLabels: {
@@ -116,20 +127,26 @@ export const SETTINGS = {
       echitatie: 'Echitație',
       cricket: 'Cricket',
       'tenis-de-masa': 'Tenis de masă',
+      badminton: 'Badminton',
     },
   },
 
   // ── Imagini ───────────────────────────────────────────────────────────────
   images: {
     // Imaginile se încarcă atunci când se află la această distanță de ecran
-    // (120% = încă un ecran și ceva în fiecare direcție)…
-    loadMargin: '120%',
-    // …și sunt eliberate din memorie abia când ajung la această distanță.
-    unloadMargin: '300%',
+    // (50% = încă o jumătate de ecran în fiecare direcție)…
+    loadMargin: '50%',
+    // …și sunt eliberate din memorie când ajung la această distanță.
+    // Valori mai mari = mai puține reîncărcări, dar mai multă memorie și FPS mai mic.
+    unloadMargin: '150%',
+    // Rezoluția pozelor din boxuri:
+    // 'standard' = clare de la start până la zoom maxim (recomandat)
+    // 'low'      = mai puțină memorie, ușor neclare la zoom mare
+    // 'high'     = extra clare pe ecrane retina, mai multă memorie
+    resolution: 'standard',
     // Folosite de `npm run images` (rulat automat la dev/build); se refac singure la modificare.
     widths: [400, 800, 1600, 2400],
-    avifQuality: 50,
-    webpQuality: 78,
+    avifQuality: 50, // 0–100; crește la 60–65 dacă texturile fine par prea netede
   },
 
   // ── Modal ─────────────────────────────────────────────────────────────────

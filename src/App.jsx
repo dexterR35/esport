@@ -2,14 +2,36 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import DetailModal from './components/DetailModal';
 import HeroTopActions from './components/HeroTopActions';
 import MapViewport from './components/MapViewport';
-import { galleryItems, heroActions } from './data/gallery';
-import { generateMosaicLayout } from './lib/layout';
+import LayoutTabs from './components/LayoutTabs';
+import { getGalleryItems, heroActions } from './data/gallery';
+import { DEFAULT_LAYOUT, LAYOUTS, generateMosaicLayout, getSlotRegions } from './lib/layout';
 import { SETTINGS } from './settings';
 
 const zoomPercent = (scale) => Math.round((scale / SETTINGS.zoom.initial) * 100);
 
+// Varianta de hartă poate veni din link (?layout=module), altfel din settings.js.
+function readLayoutFromUrl() {
+  const requested = new URLSearchParams(window.location.search).get('layout');
+  return LAYOUTS.some(({ id }) => id === requested) ? requested : DEFAULT_LAYOUT;
+}
+
+const layoutCounts = Object.fromEntries(LAYOUTS.map(({ id }) => [id, getSlotRegions(id).length]));
+
 export default function App() {
-  const tiles = useMemo(() => generateMosaicLayout(galleryItems), []);
+  const [layout, setLayout] = useState(readLayoutFromUrl);
+  const tiles = useMemo(
+    () => generateMosaicLayout(getGalleryItems(layout), getSlotRegions(layout)),
+    [layout],
+  );
+
+  const changeLayout = useCallback((nextLayout) => {
+    setLayout(nextLayout);
+    // Link-ul din bara de adrese păstrează varianta aleasă, ca să poată fi trimis mai departe.
+    const url = new URL(window.location.href);
+    if (nextLayout === DEFAULT_LAYOUT) url.searchParams.delete('layout');
+    else url.searchParams.set('layout', nextLayout);
+    window.history.replaceState(null, '', url);
+  }, []);
   const mapRef = useRef(null);
   const returnFocusRef = useRef(null);
   const zoomReadoutRef = useRef(null);
@@ -58,6 +80,7 @@ export default function App() {
       >
         <MapViewport
           ref={mapRef}
+          layout={layout}
           tiles={tiles}
           disabled={Boolean(modalContent)}
           onZoomChange={handleZoomChange}
@@ -67,6 +90,14 @@ export default function App() {
 
         <div className="hero-vignette" aria-hidden="true" />
         <HeroTopActions actions={heroActions} onAction={handleAction} />
+        {SETTINGS.grid.showLayoutTabs && (
+          <LayoutTabs
+            layouts={LAYOUTS}
+            value={layout}
+            counts={layoutCounts}
+            onChange={changeLayout}
+          />
+        )}
 
         {!isCenterVisible && !modalContent && (
           <button
@@ -104,7 +135,14 @@ export default function App() {
       </main>
 
       {modalContent && (
-        <DetailModal content={modalContent} onAfterClose={closeModal} />
+        <DetailModal
+          key={modalContent.kind}
+          content={modalContent}
+          onAfterClose={closeModal}
+          onCtaAction={(action) => {
+            if (action === 'subscribe') setModalContent({ kind: 'subscribe' });
+          }}
+        />
       )}
     </>
   );

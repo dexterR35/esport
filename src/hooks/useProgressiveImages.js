@@ -10,7 +10,7 @@ export function useProgressiveImages({ viewportRef, worldRef, dependency, paused
     if (!viewport || !world) return undefined;
 
     // În timpul intro-ului toată harta e vizibilă; încărcarea tuturor imaginilor ar
-    // concura cu animația. Până atunci se văd placeholderele blurate, iar imaginea
+    // concura cu animația. Până atunci boxurile rămân închise la culoare, iar imaginea
     // centrală (data-preload="high") se încarcă imediat.
     if (paused) {
       world.querySelectorAll(`${IMAGE_SELECTOR}[data-preload="high"]`).forEach((image) => {

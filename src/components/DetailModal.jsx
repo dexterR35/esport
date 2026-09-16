@@ -13,8 +13,9 @@ function CloseIcon() {
   );
 }
 
-export default function DetailModal({ content, onAfterClose }) {
+export default function DetailModal({ content, onAfterClose, onCtaAction }) {
   const [isClosing, setIsClosing] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const dialogRef = useRef(null);
   const closeButtonRef = useRef(null);
   const closingRef = useRef(false);
@@ -95,13 +96,14 @@ export default function DetailModal({ content, onAfterClose }) {
               className={`modal-visual ${
                 detailImage ? 'modal-visual--media' : 'modal-visual--placeholder'
               }`}
-              style={{
-                '--modal-color': item.color,
-                backgroundImage: detailImage ? `url("${item.modal.image.blur}")` : undefined,
-              }}
+              style={{ '--modal-color': item.color }}
             >
               {detailImage ? (
                 <img
+                  // Poza apare după încărcare; `complete` acoperă cazul în care e deja în cache.
+                  ref={(node) => { if (node?.complete && node.naturalWidth) setImageLoaded(true); }}
+                  className={imageLoaded ? 'is-loaded' : undefined}
+                  onLoad={() => setImageLoaded(true)}
                   src={detailImage.src}
                   srcSet={detailImage.srcSet}
                   sizes={MODAL_IMAGE_SIZES}
@@ -119,6 +121,9 @@ export default function DetailModal({ content, onAfterClose }) {
                   <p>IMAGINE ÎN CURÂND</p>
                 </>
               )}
+              {detailImage && !imageLoaded && (
+                <span className="modal-visual__loader" aria-hidden="true" />
+              )}
               {item.logo && (
                 <span className="brand-slot__logo brand-slot__logo--modal">
                   <img
@@ -134,7 +139,11 @@ export default function DetailModal({ content, onAfterClose }) {
               <p className="modal-kicker">{item.category}</p>
               <h2 id="modal-title">{item.modal.title}</h2>
               <p>{item.modal.body}</p>
-              {item.modal.cta && (
+              <div className="modal-meta" aria-label="Detalii slot">
+                <span>Box {item.number}</span>
+                <span>Format {item.spanColumns} × {item.spanRows}</span>
+              </div>
+              {item.modal.cta?.href && (
                 <a
                   className="modal-cta"
                   href={item.modal.cta.href}
@@ -147,10 +156,18 @@ export default function DetailModal({ content, onAfterClose }) {
                   </svg>
                 </a>
               )}
-              <div className="modal-meta" aria-label="Detalii slot">
-                <span>Box {item.number}</span>
-                <span>Format {item.spanColumns} × {item.spanRows}</span>
-              </div>
+              {item.modal.cta?.action && (
+                <button
+                  type="button"
+                  className="modal-cta"
+                  onClick={() => onCtaAction?.(item.modal.cta.action)}
+                >
+                  {item.modal.cta.label}
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 12h14M13 6l6 6-6 6" />
+                  </svg>
+                </button>
+              )}
             </div>
           </>
         ) : (

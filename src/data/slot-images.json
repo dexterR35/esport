@@ -7,7 +7,243 @@
       800,
       1672
     ],
-    "color": "#081838",
-    "blur": "data:image/webp;base64,UklGRp4AAABXRUJQVlA4IJIAAADwAwCdASoYAA4APu1iqU2ppaOiMAgBMB2JQBOggQAiKM01smwEK/oAAP59UUpfFMnBtStqZk8VEVHBBx+ivLh8Y/g0qBhurbd9HoWAw7354s4OW7QukgCzg6ymJOrC3yqihXRfdvS3xDwGr6twKJe3t33g0wDAnzzerXklKd2CZ9TBuSMJdXFQaSAG5Ep0+sYAAA=="
+    "color": "#081838"
+  },
+  "atletism-01": {
+    "width": 887,
+    "height": 1774,
+    "widths": [
+      400,
+      887
+    ],
+    "color": "#e8e8e8"
+  },
+  "badminton-01": {
+    "width": 1024,
+    "height": 1536,
+    "widths": [
+      400,
+      800,
+      1024
+    ],
+    "color": "#181828"
+  },
+  "baschet-01": {
+    "width": 887,
+    "height": 1774,
+    "widths": [
+      400,
+      887
+    ],
+    "color": "#181818"
+  },
+  "baseball-01": {
+    "width": 1254,
+    "height": 1254,
+    "widths": [
+      400,
+      800,
+      1254
+    ],
+    "color": "#281818"
+  },
+  "box-01": {
+    "width": 1254,
+    "height": 1254,
+    "widths": [
+      400,
+      800,
+      1254
+    ],
+    "color": "#181818"
+  },
+  "canotaj-01": {
+    "width": 1774,
+    "height": 887,
+    "widths": [
+      400,
+      800,
+      1774
+    ],
+    "color": "#a89888"
+  },
+  "canotaj-02": {
+    "width": 1774,
+    "height": 887,
+    "widths": [
+      400,
+      800,
+      1774
+    ],
+    "color": "#a89888"
+  },
+  "ciclism-01": {
+    "width": 1254,
+    "height": 1254,
+    "widths": [
+      400,
+      800,
+      1254
+    ],
+    "color": "#786858"
+  },
+  "f1-01": {
+    "width": 1774,
+    "height": 887,
+    "widths": [
+      400,
+      800,
+      1774
+    ],
+    "color": "#383838"
+  },
+  "f1-02": {
+    "width": 1774,
+    "height": 887,
+    "widths": [
+      400,
+      800,
+      1774
+    ],
+    "color": "#080808"
+  },
+  "fotbal-01": {
+    "width": 1774,
+    "height": 887,
+    "widths": [
+      400,
+      800,
+      1774
+    ],
+    "color": "#282828"
+  },
+  "golf-01": {
+    "width": 1254,
+    "height": 1254,
+    "widths": [
+      400,
+      800,
+      1254
+    ],
+    "color": "#d8d8d8"
+  },
+  "handbal-01": {
+    "width": 1024,
+    "height": 1536,
+    "widths": [
+      400,
+      800,
+      1024
+    ],
+    "color": "#282828"
+  },
+  "hochei-01": {
+    "width": 1448,
+    "height": 1086,
+    "widths": [
+      400,
+      800,
+      1448
+    ],
+    "color": "#383838"
+  },
+  "inot-01": {
+    "width": 1774,
+    "height": 887,
+    "widths": [
+      400,
+      800,
+      1774
+    ],
+    "color": "#0888a8"
+  },
+  "rugby-01": {
+    "width": 1536,
+    "height": 1024,
+    "widths": [
+      400,
+      800,
+      1536
+    ],
+    "color": "#383838"
+  },
+  "schi-01": {
+    "width": 1536,
+    "height": 1024,
+    "widths": [
+      400,
+      800,
+      1536
+    ],
+    "color": "#e8e8e8"
+  },
+  "schi-02": {
+    "width": 1536,
+    "height": 1024,
+    "widths": [
+      400,
+      800,
+      1536
+    ],
+    "color": "#e8e8e8"
+  },
+  "scrima-01": {
+    "width": 1254,
+    "height": 1254,
+    "widths": [
+      400,
+      800,
+      1254
+    ],
+    "color": "#081818"
+  },
+  "scrima-02": {
+    "width": 1254,
+    "height": 1254,
+    "widths": [
+      400,
+      800,
+      1254
+    ],
+    "color": "#081818"
+  },
+  "surf-01": {
+    "width": 887,
+    "height": 1774,
+    "widths": [
+      400,
+      887
+    ],
+    "color": "#185858"
+  },
+  "tenis-01": {
+    "width": 1024,
+    "height": 1536,
+    "widths": [
+      400,
+      800,
+      1024
+    ],
+    "color": "#181828"
+  },
+  "tenis-de-masa-01": {
+    "width": 1536,
+    "height": 1024,
+    "widths": [
+      400,
+      800,
+      1536
+    ],
+    "color": "#181818"
+  },
+  "volei-01": {
+    "width": 1086,
+    "height": 1448,
+    "widths": [
+      400,
+      800,
+      1086
+    ],
+    "color": "#181818"
   }
 }

@@ -1,23 +1,20 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
-import { detectImageFormat } from './lib/images';
 import { SETTINGS } from './settings';
 import './styles.css';
 
 // Setările vizuale ale boxurilor ajung în CSS ca variabile.
 const rootStyle = document.documentElement.style;
-rootStyle.setProperty('--tile-title-size', `${SETTINGS.tiles.titleSize}px`);
-rootStyle.setProperty('--tile-title-size-small', `${SETTINGS.tiles.titleSizeSmall}px`);
-rootStyle.setProperty('--tile-title-size-center', `${SETTINGS.tiles.titleSizeCenter}px`);
+rootStyle.setProperty('--tile-gap', `${SETTINGS.tiles.gap}px`);
+rootStyle.setProperty('--tile-title-min', `${SETTINGS.tiles.titleMin}px`);
+rootStyle.setProperty('--tile-title-max', `${SETTINGS.tiles.titleMax}px`);
+rootStyle.setProperty('--tile-title-scale', String(SETTINGS.tiles.titleScale));
 rootStyle.setProperty('--tile-logo-width', `${SETTINGS.tiles.logoWidth}%`);
+rootStyle.setProperty('--tile-hover-parallax', `${SETTINGS.tiles.hoverParallax}px`);
 
-// Verificarea AVIF durează câteva milisecunde; o așteptăm ca toate imaginile
-// să folosească de la început același format.
-detectImageFormat().then(() => {
-  createRoot(document.getElementById('root')).render(
-    <StrictMode>
-      <App />
-    </StrictMode>,
-  );
-});
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);

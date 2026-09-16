@@ -1,4 +1,5 @@
 import { SETTINGS } from '../settings.js';
+import { buildModuleRegions } from './modules.js';
 
 // Valorile se editează în src/settings.js.
 export const MAP_CONFIG = {
@@ -377,16 +378,6 @@ const FEATURED_REGION = {
   row: Math.floor((MAP_CONFIG.rows - SETTINGS.grid.centerRows) / 2),
 };
 
-// Layout-ul este determinist (seed fix), deci slotul cu un anumit număr ocupă
-// mereu aceeași poziție. Conținutul din slots.json se leagă sigur de acest număr.
-const SURROUNDING_REGIONS = splitElongatedRegions(
-  removeRepeatedNeighbors(
-    mergeAlignedRepeats(createSurroundingRegions(FEATURED_REGION, SETTINGS.grid.seed)),
-    [FEATURED_REGION],
-  ),
-  SETTINGS.grid.maxAspect,
-);
-
 /**
  * Împărțiri manuale din settings.js → grid.splits:
  *  'columns' = două boxuri alăturate, 'rows' = două boxuri unul peste altul.
@@ -425,42 +416,64 @@ function applyManualSplits(regions, splits, maxAspect) {
   return result;
 }
 
-/** Regiunea fiecărui slot, în ordinea numerelor: [0] = 001 (central), [1] = 002… */
-export const SLOT_REGIONS = applyManualSplits(
-  [FEATURED_REGION, ...SURROUNDING_REGIONS],
-  SETTINGS.grid.splits ?? {},
-  SETTINGS.grid.maxAspect,
-);
+// ── Variante de layout ──────────────────────────────────────────────────────
+// Fiecare variantă este deterministă: aceleași setări = aceleași poziții și numere.
+// Numerele boxurilor diferă între variante; doar 001 (bannerul central) rămâne același.
 
-/** Numărul exact de sloturi din hartă: canvasul central + regiunile din jur. */
-export const SLOT_COUNT = SLOT_REGIONS.length;
+export const LAYOUTS = [
+  { id: 'actual', label: 'Actual' },
+  { id: 'module', label: 'Module' },
+];
+
+export const DEFAULT_LAYOUT = LAYOUTS.some(({ id }) => id === SETTINGS.grid.layout)
+  ? SETTINGS.grid.layout
+  : 'actual';
+
+function buildSurroundingRegions() {
+  return splitElongatedRegions(
+    removeRepeatedNeighbors(
+      mergeAlignedRepeats(createSurroundingRegions(FEATURED_REGION, SETTINGS.grid.seed)),
+      [FEATURED_REGION],
+    ),
+    SETTINGS.grid.maxAspect,
+  );
+}
+
+function buildRegions(layout) {
+  if (layout === 'module') {
+    const regions = buildModuleRegions(FEATURED_REGION, MAP_CONFIG.columns, MAP_CONFIG.rows);
+    if (regions) return regions;
+    console.warn('Layout „module” este desenat pentru un grid 50 × 32 cu banner 6 × 3. Se folosește „actual”.');
+    return buildRegions('actual');
+  }
+  // grid.splits se aplică doar variantei „actual”, pentru care au fost alese numerele.
+  return applyManualSplits(
+    [FEATURED_REGION, ...buildSurroundingRegions()],
+    SETTINGS.grid.splits ?? {},
+    SETTINGS.grid.maxAspect,
+  );
+}
+
+const regionsCache = new Map();
+
+/** Regiunea fiecărui box, în ordinea numerelor: [0] = 001 (central), [1] = 002… */
+export function getSlotRegions(layout = DEFAULT_LAYOUT) {
+  if (!regionsCache.has(layout)) regionsCache.set(layout, buildRegions(layout));
+  return regionsCache.get(layout);
+}
 
 /**
- * Împarte recursiv fiecare zonă din jurul canvasului central. Regiunile rezultate
- * formează un mozaic complet: nu există găuri, gap sau margini neacoperite.
+ * Transformă regiunile în boxuri poziționate. Fiecare item primește regiunea cu același
+ * index (item 0 = boxul central). Rezultatul e sortat după distanța față de centru,
+ * pentru animația de apariție.
  */
-export function generateMosaicLayout(items) {
-  const featuredIndexes = items.reduce((indexes, item, index) => {
-    if (item.featured) indexes.push(index);
-    return indexes;
-  }, []);
-  if (featuredIndexes.length !== 1) {
-    throw new Error('Mosaic layout requires exactly one featured item.');
+export function generateMosaicLayout(items, regions) {
+  if (items.length < regions.length) {
+    throw new Error(`Layout-ul are nevoie de ${regions.length} itemi.`);
   }
 
-  const [featuredIndex] = featuredIndexes;
-  const surroundingItems = items.filter((_, index) => index !== featuredIndex);
-  if (surroundingItems.length < SLOT_REGIONS.length - 1) {
-    throw new Error(`Mosaic layout requires at least ${SLOT_COUNT} items.`);
-  }
-
-  const result = [toTile(items[featuredIndex], FEATURED_REGION)];
-
-  SLOT_REGIONS.slice(1).forEach((region, index) => {
-    result.push(toTile(surroundingItems[index], region));
-  });
-
-  return result
+  return regions
+    .map((region, index) => toTile(items[index], region))
     .sort((first, second) => first.revealOrder - second.revealOrder)
     .map(({ revealOrder, ...tile }) => tile);
 }
