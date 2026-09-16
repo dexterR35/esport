@@ -10,6 +10,8 @@ export function getImageSources(image) {
   const fallbackWidth = image.widths.find((width) => width >= 800) ?? image.widths.at(-1);
 
   return {
+    // Varianta mică (240px) pentru previzualizarea din boxuri; generată de `npm run images`.
+    preview: `${base}-preview.${IMAGE_FORMAT}`,
     src: `${base}-${fallbackWidth}.${IMAGE_FORMAT}`,
     srcSet: image.widths.map((width) => `${base}-${width}.${IMAGE_FORMAT} ${width}w`).join(', '),
     width: image.width,

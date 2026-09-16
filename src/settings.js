@@ -133,10 +133,10 @@ export const SETTINGS = {
 
   // ── Imagini ───────────────────────────────────────────────────────────────
   images: {
-    // Imaginile se încarcă atunci când se află la această distanță de ecran
-    // (50% = încă o jumătate de ecran în fiecare direcție)…
+    // Toate boxurile au imediat o previzualizare mică. Varianta clară se încarcă atunci
+    // când boxul se află la această distanță de ecran (50% = încă o jumătate de ecran)…
     loadMargin: '50%',
-    // …și sunt eliberate din memorie când ajung la această distanță.
+    // …și boxul revine la previzualizare când ajunge la această distanță.
     // Valori mai mari = mai puține reîncărcări, dar mai multă memorie și FPS mai mic.
     unloadMargin: '150%',
     // Rezoluția pozelor din boxuri:

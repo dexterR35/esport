@@ -55,6 +55,26 @@ function resolveLogo(logo, number) {
   };
 }
 
+// Modalul extins (pagină de prezentare) — folosit de boxul central. Textele rămân așa
+// cum sunt în slots.json; butoanele și link-urile trec prin aceeași validare ca CTA-urile.
+function resolveLanding(landing, number) {
+  if (!landing?.title) return null;
+  const termsLink = landing.terms?.link?.href ? resolveCta(landing.terms.link, number) : null;
+  return {
+    ...landing,
+    cta: resolveCta(landing.cta, number),
+    features: Array.isArray(landing.features) ? landing.features.filter((f) => f?.title) : [],
+    steps: Array.isArray(landing.steps) ? landing.steps.filter((s) => s?.title) : [],
+    terms: landing.terms
+      ? {
+          title: landing.terms.title,
+          items: Array.isArray(landing.terms.items) ? landing.terms.items.filter(Boolean) : [],
+          link: termsLink,
+        }
+      : null,
+  };
+}
+
 function sportLabel(sport) {
   if (!sport) return null;
   return gallery.sportLabels[sport]
@@ -114,6 +134,7 @@ function buildItem(index, assignedImages) {
     imageAlt: content.imageAlt ?? title,
     image,
     logo: resolveLogo(content.logo, number),
+    landing: resolveLanding(content.landing, number),
     cta,
     modal: {
       title: modal.title ?? title,

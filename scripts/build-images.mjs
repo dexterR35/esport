@@ -22,6 +22,8 @@ const MANIFEST_PATH = path.join(ROOT, 'src/data/slot-images.json');
 const CACHE_PATH = path.join(ROOT, '.cache/slot-images.json');
 
 const WIDTHS = [...SETTINGS.images.widths].sort((a, b) => a - b);
+// Previzualizarea mică încărcată imediat în toate boxurile (vezi useProgressiveImages).
+const PREVIEW_WIDTH = 240;
 const FORMATS = {
   avif: (pipeline) => pipeline.avif({ quality: SETTINGS.images.avifQuality, effort: 3 }),
 };
@@ -72,6 +74,15 @@ async function processImage(key, sourcePath, cachedSignature, signature) {
       await encode(image.clone().resize({ width: targetWidth })).toFile(outputPath);
     }),
   );
+  const previewPath = path.join(OUTPUT_DIR, `${key}-preview.avif`);
+  if (!unchanged || !(await exists(previewPath))) {
+    jobs.push(
+      image.clone()
+        .resize({ width: Math.min(PREVIEW_WIDTH, width) })
+        .avif({ quality: 45, effort: 3 })
+        .toFile(previewPath),
+    );
+  }
   await Promise.all(jobs);
 
   const { dominant } = await image.clone().stats();
@@ -143,7 +154,10 @@ async function main() {
   // Șterge variantele rămase de la imagini eliminate sau redimensionate.
   const expected = new Set(
     Object.entries(manifest).flatMap(([key, { widths }]) =>
-      widths.flatMap((width) => Object.keys(FORMATS).map((format) => `${key}-${width}.${format}`)),
+      [
+        `${key}-preview.avif`,
+        ...widths.flatMap((width) => Object.keys(FORMATS).map((format) => `${key}-${width}.${format}`)),
+      ],
     ),
   );
   for (const file of await readdir(OUTPUT_DIR)) {

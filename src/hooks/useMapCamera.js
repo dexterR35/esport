@@ -35,6 +35,9 @@ export function useMapCamera({
   onZoomChange,
 }) {
   const cameraRef = useRef({ tx: 0, ty: 0, scale: MAP_CONFIG.initialScale });
+  // Momentul ultimei mișcări a camerei (performance.now()); folosit ca pozele clare să
+  // apară prin fade doar când harta stă pe loc.
+  const lastMoveRef = useRef(0);
   const viewportSizeRef = useRef({ width: 0, height: 0 });
   const frameRef = useRef(0);
   const cameraTweenRef = useRef(null);
@@ -72,6 +75,7 @@ export function useMapCamera({
     // O singură proprietate este schimbată per frame. Variabilele CSS pe părinte
     // s-ar propaga la toate cardurile și ar forța recalculări inutile de stil.
     world.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${scale})`;
+    lastMoveRef.current = performance.now();
     onZoomChange?.(Math.round((scale / MAP_CONFIG.initialScale) * 100));
   }, [onZoomChange, worldRef]);
 
@@ -625,7 +629,19 @@ export function useMapCamera({
     [animateCamera, disabled, hurryIntro, reset, smoothZoomBy],
   );
 
+  // Butoanele − / + din pagină: zoom lin, centrat pe mijlocul ecranului.
+  const zoomBy = useCallback(
+    (multiplier) => {
+      if (disabled || hurryIntro()) return;
+      const viewport = viewportSizeRef.current;
+      smoothZoomBy(multiplier, viewport.width / 2, viewport.height / 2);
+    },
+    [disabled, hurryIntro, smoothZoomBy],
+  );
+
   return {
+    zoomBy,
+    lastMoveRef,
     isDragging,
     isIntroPlaying,
     reset,

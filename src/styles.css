@@ -150,27 +150,50 @@ button {
 }
 
 @media (hover: none) {
-  .sport-tile__button:hover .sport-tile__media {
+  .sport-tile__button:hover .sport-tile__photo {
     transform: none;
   }
 }
 
-.sport-tile__media {
+.sport-tile__photo {
   position: absolute;
   inset: 0;
   z-index: 1;
+  pointer-events: none;
+  transition: transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sport-tile__media,
+.sport-tile__full {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   opacity: 0;
-  pointer-events: none;
-  transition:
-    opacity 260ms ease,
-    transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Poza devine vizibilă după ce s-a încărcat și decodat (clasa vine din useProgressiveImages). */
-.sport-tile__media--loaded {
+.sport-tile__media {
+  transition: opacity 260ms ease, visibility 0s;
+}
+
+/* După ce poza clară a terminat fade-in-ul, previzualizarea de dedesubt e ascunsă, ca
+   browserul să nu mai deseneze două poze în același box (mai mult FPS la zoom). Când poza
+   clară dispare, previzualizarea revine imediat, înaintea fade-out-ului. */
+.sport-tile__photo:has(.sport-tile__full--loaded) .sport-tile__media {
+  visibility: hidden;
+  transition: opacity 260ms ease, visibility 0s linear 700ms;
+}
+
+/* Poza clară apare peste previzualizare printr-un fade lin; previzualizarea rămâne
+   dedesubt, deci nu există niciun moment gol sau pâlpâire. */
+.sport-tile__full {
+  transition: opacity 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Clasele vin din useProgressiveImages, după încărcare și decodare. */
+.sport-tile__media--loaded,
+.sport-tile__full--loaded {
   opacity: 1;
 }
 
@@ -183,7 +206,7 @@ button {
    --tilt-x / --tilt-y (-0.5…0.5) vin din MapTile. Transform-ul e pus DOAR la hover: un
    transform pe toate cele ~300 de poze le-ar face straturi GPU separate și ar înjumătăți FPS-ul.
    Fără `will-change`: ar face browserul să scaleze o copie rasterizată, iar poza ar părea neclară. */
-.sport-tile__button:hover .sport-tile__media {
+.sport-tile__button:hover .sport-tile__photo {
   transform:
     translate(
       calc(var(--tilt-x, 0) * -1 * var(--tile-hover-parallax, 12px)),
@@ -398,7 +421,7 @@ button {
 
 .center-map-button {
   position: fixed;
-  z-index: 6;
+  z-index: 10;
   right: max(28px, env(safe-area-inset-right));
   bottom: max(88px, calc(env(safe-area-inset-bottom) + 64px));
   display: flex;
@@ -407,7 +430,7 @@ button {
   align-items: center;
   gap: 9px;
   cursor: pointer;
-  border: 1px solid rgba(141, 164, 218, 0.58);
+  border: 1px solid #ff3855;
   border-radius: 999px;
   color: rgba(242, 246, 255, 0.94);
   background: rgba(7, 10, 17, 0.9);
@@ -419,7 +442,7 @@ button {
 }
 
 .center-map-button:hover {
-  border-color: rgba(169, 191, 245, 0.88);
+  border-color: #ff5c73;
   background: rgba(24, 32, 49, 0.96);
   transform: translateY(-2px);
 }
@@ -517,7 +540,7 @@ button {
 
 .zoom-readout {
   position: fixed;
-  z-index: 4;
+  z-index: 10;
   right: max(28px, env(safe-area-inset-right));
   bottom: max(24px, env(safe-area-inset-bottom));
   display: flex;
@@ -525,25 +548,45 @@ button {
   justify-content: space-between;
   width: 166px;
   height: 50px;
-  padding: 0 17px;
+  padding: 0 5px;
   border: 1px solid rgba(134, 153, 193, 0.42);
   border-radius: 999px;
   background: rgba(7, 10, 17, 0.9);
   box-shadow: 0 12px 35px rgba(0, 0, 0, 0.32);
-  pointer-events: none;
+}
+
+.zoom-button {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  place-items: center;
+  cursor: pointer;
+  border: 0;
+  border-radius: 50%;
+  color: rgba(228, 234, 245, 0.82);
+  background: transparent;
+  font: inherit;
+  font-size: 22px;
+  font-weight: 300;
+  line-height: 1;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.zoom-button:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.zoom-button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
 }
 
 .zoom-readout strong {
   font-family: "SFMono-Regular", Consolas, monospace;
   font-size: 13px;
   font-weight: 500;
-}
-
-.zoom-glyph {
-  color: rgba(228, 234, 245, 0.72);
-  font-size: 20px;
-  font-weight: 300;
-  line-height: 1;
 }
 
 .modal-backdrop {
@@ -745,44 +788,417 @@ button {
   line-height: 1.75;
 }
 
-/* Butonul roșu principal: ultimul element din coloana de text, jos în dreapta. */
+/* Butonul principal din modalul obișnuit: ultimul element din coloana de text, jos în dreapta. */
 .modal-cta {
   align-self: flex-end;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 46px;
   margin-top: auto;
-  cursor: pointer;
-  font-family: inherit;
-  padding: 0 20px;
-  border-radius: 999px;
-  border: 1px solid #ff3855;
-  color: #fff;
-  background: linear-gradient(145deg, #ff3f5b, #ea1737);
-  box-shadow: 0 14px 34px rgba(223, 12, 52, 0.3);
-  font-size: 14px;
-  font-weight: 700;
-  text-decoration: none;
-  transition: transform 160ms ease, background 160ms ease;
 }
 
-.modal-cta:hover {
+/* ── Componente reutilizabile (src/components/ui) ─────────────────────────── */
+
+.ui-button {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 20px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.ui-button:hover {
   transform: translateY(-1px);
 }
 
-.modal-cta:focus-visible {
+.ui-button:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 3px;
 }
 
-.modal-cta svg {
+.ui-button--lg {
+  min-height: 52px;
+  padding: 0 26px;
+  font-size: 15px;
+}
+
+.ui-button--primary {
+  border-color: #ff3855;
+  color: #fff;
+  background: linear-gradient(145deg, #ff3f5b, #ea1737);
+  box-shadow: 0 14px 34px rgba(223, 12, 52, 0.3);
+}
+
+.ui-button--outline {
+  border-color: rgba(255, 255, 255, 0.72);
+  color: #fff;
+  background: rgba(7, 10, 17, 0.55);
+}
+
+.ui-button--outline:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ui-button--ghost {
+  color: rgba(228, 234, 245, 0.86);
+  background: transparent;
+}
+
+.ui-button__icon {
   width: 16px;
+  flex: 0 0 auto;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2;
+}
+
+.ui-eyebrow {
+  margin: 0;
+  color: #ff5c73;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.ui-badge {
+  display: inline-flex;
+  align-self: flex-start;
+  justify-self: start;
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: #ff8a9b;
+  background: rgba(255, 45, 84, 0.14);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ui-section-heading {
+  display: grid;
+  gap: 10px;
+}
+
+.ui-section-heading__title {
+  margin: 0;
+  font-size: clamp(24px, 2.6vw, 32px);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+.ui-section-heading__text {
+  max-width: 60ch;
+  margin: 0;
+  color: rgba(220, 228, 241, 0.7);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.ui-feature-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ui-feature {
+  display: grid;
+  gap: 4px;
+  padding: 16px 18px;
+  border: 1px solid rgba(142, 158, 193, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ui-feature__title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ui-feature__text {
+  color: rgba(220, 228, 241, 0.66);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ui-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ui-step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: start;
+  padding: 20px;
+  border: 1px solid rgba(142, 158, 193, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ui-step__number {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(145deg, #ff3f5b, #ea1737);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-step__body {
+  display: grid;
+  gap: 6px;
+}
+
+.ui-step__title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.ui-step__text {
+  margin: 0;
+  color: rgba(220, 228, 241, 0.66);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.ui-terms {
+  border: 1px solid rgba(142, 158, 193, 0.22);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  scroll-margin-top: 24px;
+}
+
+.ui-terms__summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  list-style: none;
+}
+
+.ui-terms__summary::-webkit-details-marker {
+  display: none;
+}
+
+.ui-terms__summary:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+  border-radius: 12px;
+}
+
+.ui-terms__summary svg {
+  width: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  transition: transform 200ms ease;
+}
+
+.ui-terms[open] .ui-terms__summary svg {
+  transform: rotate(180deg);
+}
+
+.ui-terms__content {
+  display: grid;
+  gap: 14px;
+  padding: 0 20px 20px;
+}
+
+.ui-terms__list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+  color: rgba(220, 228, 241, 0.7);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ui-terms__link {
+  justify-self: start;
+  color: #ff8a9b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ui-responsible {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 0;
+  color: rgba(220, 228, 241, 0.62);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ui-responsible__badge {
+  display: grid;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* ── Modalul extins al boxului central (pagină de prezentare) ─────────────── */
+
+.detail-modal--landing {
+  display: block;
+  width: min(1120px, 94vw);
+  max-height: calc(100dvh - 40px);
+  overflow: hidden;
+}
+
+.landing {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 42px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.landing-hero {
+  position: relative;
+  display: grid;
+  flex: 0 0 auto;
+  align-items: end;
+  min-height: min(460px, 58dvh);
+  padding: 56px;
+  overflow: hidden;
+  background: #0a0e17;
+}
+
+.landing-hero__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+
+.landing-hero__image.is-loaded {
+  opacity: 1;
+}
+
+/* Umbrire spre stânga-jos, ca textul alb să fie lizibil peste poză. */
+.landing-hero::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(7, 10, 17, 0.92) 0%, rgba(7, 10, 17, 0.7) 42%, rgba(7, 10, 17, 0.15) 75%),
+    linear-gradient(0deg, rgba(13, 18, 27, 1) 0%, transparent 38%);
+}
+
+.landing-hero__content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 16px;
+  max-width: 580px;
+}
+
+.landing-hero__logo {
+  width: 150px;
+  height: auto;
+  margin-bottom: 8px;
+}
+
+.landing-hero__title {
+  margin: 0;
+  font-size: clamp(34px, 4.6vw, 58px);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  text-wrap: balance;
+}
+
+.landing-hero__subtitle {
+  max-width: 50ch;
+  margin: 0;
+  color: rgba(228, 234, 245, 0.8);
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.landing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.landing-body {
+  display: grid;
+  gap: 44px;
+  padding: 40px 56px 48px;
+}
+
+.landing-offer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.landing-offer__main {
+  display: grid;
+  gap: 16px;
+}
+
+.landing-section {
+  display: grid;
+  gap: 22px;
+}
+
+.landing-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding: 16px 56px;
+  border-top: 1px solid rgba(142, 158, 193, 0.2);
+  background: rgba(10, 14, 22, 0.97);
 }
 
 .modal-meta {
@@ -853,6 +1269,37 @@ button {
 }
 
 @media (max-width: 760px) {
+  .landing-hero {
+    min-height: 420px;
+    padding: 64px 22px 28px;
+  }
+
+  .landing-hero::after {
+    background: linear-gradient(0deg, rgba(13, 18, 27, 1) 8%, rgba(7, 10, 17, 0.7) 55%, rgba(7, 10, 17, 0.35) 100%);
+  }
+
+  .landing-hero__logo {
+    width: 120px;
+  }
+
+  .landing-body {
+    gap: 32px;
+    padding: 28px 22px 32px;
+  }
+
+  .landing-offer {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .landing-footer {
+    padding: 12px 22px;
+  }
+
+  .landing-footer .ui-button {
+    flex: 1 1 auto;
+  }
+
   .layout-tabs {
     left: max(12px, env(safe-area-inset-left));
     bottom: max(52px, env(safe-area-inset-bottom));
@@ -890,12 +1337,15 @@ button {
     right: max(12px, env(safe-area-inset-right));
     bottom: max(52px, env(safe-area-inset-bottom));
     width: auto;
-    height: 38px;
-    padding: 0 14px;
+    height: 42px;
+    gap: 2px;
+    padding: 0 3px;
   }
 
-  .zoom-readout .zoom-glyph {
-    display: none;
+  .zoom-button {
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
   }
 
   .zoom-readout strong {

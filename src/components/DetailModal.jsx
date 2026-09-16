@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getImageSources, MODAL_IMAGE_SIZES } from '../lib/images';
 import { SETTINGS } from '../settings';
+import LandingModalContent from './landing/LandingModalContent';
+import { CtaButton } from './ui/Button';
 
 const EXIT_DURATION = SETTINGS.modal.closeDuration;
 
@@ -64,6 +66,7 @@ export default function DetailModal({ content, onAfterClose, onCtaAction }) {
 
   const isSport = content.kind === 'sport';
   const item = isSport ? content.item : null;
+  const isLanding = Boolean(item?.landing);
   const detailImage = isSport ? getImageSources(item.modal.image) : null;
 
   return createPortal(
@@ -75,7 +78,9 @@ export default function DetailModal({ content, onAfterClose, onCtaAction }) {
     >
       <section
         ref={dialogRef}
-        className={`detail-modal${isSport ? '' : ' detail-modal--compact'}`}
+        className={`detail-modal${
+          isLanding ? ' detail-modal--landing' : isSport ? '' : ' detail-modal--compact'
+        }`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
@@ -90,7 +95,9 @@ export default function DetailModal({ content, onAfterClose, onCtaAction }) {
           <CloseIcon />
         </button>
 
-        {isSport ? (
+        {isLanding ? (
+          <LandingModalContent item={item} onCtaAction={onCtaAction} />
+        ) : isSport ? (
           <>
             <div
               className={`modal-visual ${
@@ -143,31 +150,7 @@ export default function DetailModal({ content, onAfterClose, onCtaAction }) {
                 <span>Box {item.number}</span>
                 <span>Format {item.spanColumns} × {item.spanRows}</span>
               </div>
-              {item.modal.cta?.href && (
-                <a
-                  className="modal-cta"
-                  href={item.modal.cta.href}
-                  target={item.modal.cta.external ? '_blank' : undefined}
-                  rel={item.modal.cta.external ? 'noopener noreferrer' : undefined}
-                >
-                  {item.modal.cta.label}
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M7 17L17 7M9 7h8v8" />
-                  </svg>
-                </a>
-              )}
-              {item.modal.cta?.action && (
-                <button
-                  type="button"
-                  className="modal-cta"
-                  onClick={() => onCtaAction?.(item.modal.cta.action)}
-                >
-                  {item.modal.cta.label}
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M5 12h14M13 6l6 6-6 6" />
-                  </svg>
-                </button>
-              )}
+              <CtaButton cta={item.modal.cta} onAction={onCtaAction} className="modal-cta" />
             </div>
           </>
         ) : (

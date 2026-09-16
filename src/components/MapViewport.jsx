@@ -38,6 +38,7 @@ const MapViewport = forwardRef(function MapViewport(
     worldRef,
     dependency: tiles,
     paused: camera.isIntroPlaying,
+    lastMoveRef: camera.lastMoveRef,
   });
   const preloadModalImage = useCallback(
     (tile) => preloadImage(tile.modal.image, MODAL_IMAGE_SIZES),
@@ -99,6 +100,8 @@ const MapViewport = forwardRef(function MapViewport(
     forwardedRef,
     () => ({
       reset: camera.reset,
+      zoomIn: () => camera.zoomBy(SETTINGS.zoom.keyboardStep * 1.15),
+      zoomOut: () => camera.zoomBy(1 / (SETTINGS.zoom.keyboardStep * 1.15)),
       center: () => {
         camera.centerOnTile(featuredTile);
         viewportRef.current?.focus({ preventScroll: true });

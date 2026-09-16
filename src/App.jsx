@@ -119,18 +119,36 @@ export default function App() {
           <span>Scroll pentru zoom</span>
         </p>
 
-        <div
-          ref={zoomReadoutRef}
-          className="zoom-readout"
-          role="meter"
-          aria-label="Nivel zoom"
-          aria-valuemin={zoomPercent(SETTINGS.zoom.min)}
-          aria-valuemax={zoomPercent(SETTINGS.zoom.max)}
-          aria-valuenow="100"
-        >
-          <span className="zoom-glyph" aria-hidden="true">−</span>
-          <strong ref={zoomValueRef}>100%</strong>
-          <span className="zoom-glyph" aria-hidden="true">＋</span>
+        <div className="zoom-readout" role="group" aria-label="Zoom">
+          <button
+            type="button"
+            className="zoom-button"
+            aria-label="Micșorează"
+            onClick={() => mapRef.current?.zoomOut()}
+          >
+            −
+          </button>
+          <strong
+            ref={(node) => {
+              zoomValueRef.current = node;
+              zoomReadoutRef.current = node;
+            }}
+            role="meter"
+            aria-label="Nivel zoom"
+            aria-valuemin={zoomPercent(SETTINGS.zoom.min)}
+            aria-valuemax={zoomPercent(SETTINGS.zoom.max)}
+            aria-valuenow="100"
+          >
+            100%
+          </strong>
+          <button
+            type="button"
+            className="zoom-button"
+            aria-label="Mărește"
+            onClick={() => mapRef.current?.zoomIn()}
+          >
+            +
+          </button>
         </div>
       </main>
 

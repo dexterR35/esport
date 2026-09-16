@@ -87,24 +87,37 @@ function MapTile({ tile, onKeyboardActivate, onFocus, onPreload }) {
           )}
 
           {image && (
-            <img
-              className="sport-tile__media"
-              data-src={image.src}
-              data-srcset={image.srcSet}
-              // Mărimea afișată la zoom-ul de start × images.resolution; browserul adaugă DPR-ul.
-              data-sizes={`${Math.ceil(tile.width * MAP_CONFIG.initialScale * IMAGE_RESOLUTION)}px`}
-              data-preload={tile.featured ? 'high' : undefined}
-              width={image.width}
-              height={image.height}
-              alt=""
-              draggable="false"
-              loading="eager"
-              decoding="async"
-              fetchPriority={tile.featured ? 'high' : 'low'}
-            />
+            // Două straturi: previzualizarea mică dedesubt și poza clară deasupra, care apare
+            // printr-un fade când e gata. Wrapper-ul se mișcă la hover (parallax) cu ambele.
+            <span className="sport-tile__photo">
+              <img
+                className="sport-tile__media"
+                src={image.preview}
+                width={image.width}
+                height={image.height}
+                alt=""
+                draggable="false"
+                loading="eager"
+                decoding="async"
+              />
+              <img
+                className="sport-tile__full"
+                // useProgressiveImages setează srcset când boxul e aproape de ecran.
+                data-srcset={image.srcSet}
+                // Mărimea afișată la zoom-ul de start × images.resolution; browserul adaugă DPR-ul.
+                data-sizes={`${Math.ceil(tile.width * MAP_CONFIG.initialScale * IMAGE_RESOLUTION)}px`}
+                data-preload={tile.featured ? 'high' : undefined}
+                width={image.width}
+                height={image.height}
+                alt=""
+                draggable="false"
+                decoding="async"
+                fetchPriority={tile.featured ? 'high' : 'low'}
+              />
+              {/* Indicator de încărcare: vizibil (și animat) doar cât previzualizarea lipsește. */}
+              <span className="sport-tile__loader" aria-hidden="true" />
+            </span>
           )}
-          {/* Indicator de încărcare: vizibil (și animat) doar cât poza se descarcă. */}
-          {image && <span className="sport-tile__loader" aria-hidden="true" />}
 
           {tile.logo && (
             <span className="brand-slot__logo">

@@ -10,6 +10,64 @@
     },
     "modal": {
       "body": "Toate sporturile tale preferate, într-un singur loc."
+    },
+    "landing": {
+      "eyebrow": "NetBet Sport",
+      "title": "Pariază pe sporturile tale preferate",
+      "subtitle": "Fotbal, tenis, baschet și multe altele: pariuri înainte de meci și live, într-un singur cont.",
+      "cta": {
+        "label": "Creează cont",
+        "href": ""
+      },
+      "termsButtonLabel": "Vezi termenii",
+      "offer": {
+        "badge": "Clienți noi",
+        "title": "Oferta de bun venit",
+        "text": "Descrie aici oferta: ce primește jucătorul, cui i se adresează și cum se activează."
+      },
+      "features": [
+        {
+          "title": "Pariuri live",
+          "text": "Pariază în timpul meciului, pe măsură ce jocul evoluează."
+        },
+        {
+          "title": "Cash out",
+          "text": "Încasează un pariu înainte de finalul evenimentului."
+        },
+        {
+          "title": "Toate sporturile",
+          "text": "De la fotbal și tenis la eSports, într-un singur loc."
+        }
+      ],
+      "stepsEyebrow": "Cum începi",
+      "stepsTitle": "Trei pași până la primul pariu",
+      "steps": [
+        {
+          "title": "Creează-ți contul",
+          "text": "Completează formularul de înregistrare în câteva minute."
+        },
+        {
+          "title": "Verifică-ți identitatea",
+          "text": "Încarcă documentele cerute pentru validarea contului."
+        },
+        {
+          "title": "Plasează primul pariu",
+          "text": "Alege evenimentul, cota și suma, apoi confirmă pariul."
+        }
+      ],
+      "terms": {
+        "title": "Termeni și condiții",
+        "items": [
+          "Oferta este disponibilă doar persoanelor cu vârsta de peste 18 ani.",
+          "Adaugă aici condițiile ofertei: rulaj, cote minime, perioada de valabilitate.",
+          "Adaugă aici restricțiile: metode de plată excluse, o ofertă per persoană sau per gospodărie."
+        ],
+        "link": {
+          "label": "Termeni și condiții complete",
+          "href": ""
+        }
+      },
+      "responsible": "Jocurile de noroc pot crea dependență. Joacă responsabil."
     }
   }
 }
