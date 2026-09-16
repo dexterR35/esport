@@ -1,0 +1,15 @@
+{
+  "001": {
+    "title": "NetBet Sport",
+    "image": "001",
+    "logo": {
+      "src": "netbet-logo-white.webp",
+      "alt": "NetBet",
+      "width": 1200,
+      "height": 247
+    },
+    "modal": {
+      "body": "Toate sporturile tale preferate, într-un singur loc."
+    }
+  }
+}

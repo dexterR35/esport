@@ -1,34 +1,140 @@
-const brandTones = [
-  '#436cff',
-  '#5c79b8',
-  '#7357d8',
-  '#237e95',
-  '#a44962',
-  '#6d768c',
-];
+import { assignImages, sportFromKey } from '../lib/assignImages';
+import { SLOT_COUNT, SLOT_REGIONS } from '../lib/layout';
+import { SETTINGS } from '../settings';
+import slotImages from './slot-images.json';
+import slotContent from './slots.json';
 
-// Pentru imaginile finale, folosește `thumbnail`/`srcSet` în grid și
-// `detailImage`/`detailSrcSet` pentru varianta mare din modal. MapViewport
-// încarcă doar imaginile apropiate de cameră și le eliberează pe cele îndepărtate.
+const { gallery } = SETTINGS;
+const fallbackColors = SETTINGS.tiles.colors;
 
-// Există suficient conținut pentru ca algoritmul să poată acoperi fiecare celulă.
-// În DOM ajung numai elementele necesare tiling-ului final.
-export const galleryItems = Array.from({ length: 1600 }, (_, index) => {
-  const number = String(index + 1).padStart(3, '0');
+// Pozele se pun în images-src/ cu numele sportului (fotbal-01.jpg) și se distribuie
+// automat pe boxuri. slots.json este folosit doar pentru excepții, după numărul
+// afișat pe box ("012"): titlu, text în modal, CTA sau o poză fixată manual.
+// Chei rezervate pentru poze manuale: numere ("001") și sufixul "-detail".
+const isManualKey = (key) => /^\d+$/.test(key) || key.endsWith('-detail');
+
+function resolveImage(key, number, field) {
+  if (!key) return null;
+  const image = slotImages[key];
+  if (!image) {
+    console.warn(`slots.json › ${number}.${field}: imaginea "${key}" lipsește. Rulează npm run images.`);
+    return null;
+  }
+  return { key, ...image };
+}
+
+function resolveCta(cta, number) {
+  if (!cta?.label || !cta?.href) return null;
+  // Acceptăm doar link-uri http(s), mailto, tel sau relative — niciodată `javascript:`.
+  if (!/^(https?:|mailto:|tel:|\/|#)/i.test(cta.href)) {
+    console.warn(`slots.json › ${number}.cta: link nepermis "${cta.href}".`);
+    return null;
+  }
+  return {
+    label: cta.label,
+    href: cta.href,
+    external: /^https?:/i.test(cta.href),
+  };
+}
+
+// Logo-urile stau în public/brand/ și nu trec prin procesarea de imagini,
+// ca să își păstreze transparența (SVG, PNG sau WebP).
+function resolveLogo(logo, number) {
+  if (!logo?.src) return null;
+  if (!/^[a-z0-9][a-z0-9_.-]*\.(svg|png|webp|avif)$/i.test(logo.src)) {
+    console.warn(`slots.json › ${number}.logo: numele fișierului "${logo.src}" nu este valid.`);
+    return null;
+  }
+  return {
+    src: `${import.meta.env.BASE_URL}brand/${logo.src}`,
+    alt: logo.alt ?? '',
+    width: logo.width,
+    height: logo.height,
+  };
+}
+
+function sportLabel(sport) {
+  if (!sport) return null;
+  return gallery.sportLabels[sport]
+    ?? sport.replace(/[-_]+/g, ' ').replace(/^\p{L}/u, (letter) => letter.toUpperCase());
+}
+
+const numberOf = (index) => String(index + 1).padStart(3, '0');
+
+// ── Distribuirea automată ───────────────────────────────────────────────────
+const fixedImages = new Map();
+const referencedKeys = new Set();
+Object.entries(slotContent).forEach(([number, content]) => {
+  if (content.image) {
+    fixedImages.set(Number(number) - 1, content.image);
+    referencedKeys.add(content.image);
+  }
+  if (content.modal?.image) referencedKeys.add(content.modal.image);
+});
+
+const autoPool = gallery.autoAssign
+  ? Object.entries(slotImages)
+      .filter(([key]) => !isManualKey(key) && !referencedKeys.has(key))
+      .map(([key, image]) => ({ key, width: image.width, height: image.height }))
+  : [];
+const assignedImages = assignImages(
+  SLOT_REGIONS,
+  autoPool,
+  new Map([...fixedImages].filter(([index]) => index >= 0 && index < SLOT_COUNT)),
+);
+
+// ── Boxurile ────────────────────────────────────────────────────────────────
+export const galleryItems = Array.from({ length: SLOT_COUNT }, (_, index) => {
+  const number = numberOf(index);
   const featured = index === 0;
+  const content = slotContent[number] ?? {};
+  const modal = content.modal ?? {};
+
+  const imageKey = content.image ?? assignedImages.get(index);
+  const image = resolveImage(imageKey, number, 'image');
+  const sport = image && !isManualKey(image.key) ? sportFromKey(image.key) : null;
+  const label = sportLabel(sport);
+  const title = content.title
+    ?? (featured ? gallery.centerTitle : label ?? gallery.emptyTitle);
+  const cta = resolveCta(content.cta, number)
+    ?? resolveCta(
+      gallery.cta && { ...gallery.cta, href: gallery.cta.href.replaceAll('{sport}', sport ?? '') },
+      number,
+    );
 
   return {
-    id: `brand-slot-${number}`,
+    id: `slot-${number}`,
+    number,
     index: index + 1,
-    title: featured ? 'Brand Canvas' : `Brand Slot ${number}`,
-    category: 'Brand placement',
-    code: featured ? 'CENTER' : 'BRAND',
-    color: brandTones[index % brandTones.length],
     featured,
-    description:
-      'Un spațiu modular din grid, pregătit pentru identitatea, imaginea sau campania unui brand.',
+    sport,
+    // Varianta devine clasa `sport-tile--<variant>`; acceptăm doar nume sigure pentru CSS.
+    variant: /^[a-z][a-z0-9-]*$/.test(content.variant ?? '') ? content.variant : null,
+    title,
+    category: content.category ?? gallery.category,
+    color: content.color ?? image?.color ?? fallbackColors[index % fallbackColors.length],
+    imageAlt: content.imageAlt ?? title,
+    image,
+    logo: resolveLogo(content.logo, number),
+    cta,
+    modal: {
+      title: modal.title ?? title,
+      // În mijlocul propoziției: "Tenis" → "tenis"; abrevierile ("MMA", "eSports") rămân neschimbate.
+      body: modal.body ?? gallery.modalBody.replaceAll(
+        '{sport}',
+        label ? label.replace(/^(\p{Lu})(?=\p{Ll})/u, (letter) => letter.toLowerCase()) : 'sport',
+      ),
+      image: resolveImage(modal.image, number, 'modal.image') ?? image,
+      cta: resolveCta(modal.cta, number) ?? cta,
+    },
   };
 });
+
+Object.keys(slotContent)
+  .filter((number) => !/^\d{3}$/.test(number) || Number(number) < 1 || Number(number) > SLOT_COUNT)
+  .forEach((number) => {
+    console.warn(`slots.json › "${number}" nu există în hartă (boxuri 001–${numberOf(SLOT_COUNT - 1)}).`);
+  });
 
 export const heroActions = [
   { id: 'explore', label: 'Explorează', variant: 'outline' },

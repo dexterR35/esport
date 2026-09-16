@@ -187,6 +187,55 @@ button {
   transition: none;
 }
 
+/* Placeholder instant: versiunea de 24px, mărită și blurată, stă sub imaginea reală. */
+.sport-tile__blur {
+  position: absolute;
+  inset: -12px;
+  z-index: 1;
+  background-color: var(--tile-color);
+  background-position: center;
+  background-size: cover;
+  filter: blur(14px);
+  pointer-events: none;
+}
+
+.sport-tile--has-image .brand-slot__title {
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+}
+
+/* Grila decorativă devine un gradient jos, ca titlul să rămână lizibil peste imagine. */
+.sport-tile--has-image .sport-tile__button::before {
+  z-index: 2;
+  background: linear-gradient(to top, rgba(4, 6, 11, 0.72), transparent 38%);
+  background-size: auto;
+  opacity: 1;
+}
+
+/* Logo centrat peste imagine (ex. NetBet pe canvasul central). */
+.brand-slot__logo {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background: radial-gradient(ellipse 42% 38% at 50% 50%, rgba(4, 6, 11, 0.55), transparent 72%);
+}
+
+.brand-slot__logo img {
+  width: clamp(80px, var(--tile-logo-width, 38%), 520px);
+  height: auto;
+  filter: drop-shadow(0 8px 28px rgba(0, 0, 0, 0.6));
+}
+
+.sport-tile--has-logo .brand-slot__placeholder {
+  display: none;
+}
+
+.brand-slot__logo--modal img {
+  width: min(62%, 360px);
+}
+
 .brand-slot__placeholder {
   position: absolute;
   inset: 0;
@@ -210,47 +259,35 @@ button {
   box-shadow: 0 0 30px color-mix(in srgb, var(--tile-color), transparent 82%);
 }
 
-.brand-slot__meta {
-  position: absolute;
-  z-index: 2;
-  top: 16px;
-  right: 17px;
-  left: 17px;
-  display: flex;
-  justify-content: space-between;
-  color: rgba(224, 231, 245, 0.58);
-  font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 9px;
-  letter-spacing: 0.13em;
-}
-
+/* Titlu mic în partea de jos a fiecărui box: numele din slots.json + numărul slotului. */
 .brand-slot__title {
   position: absolute;
-  z-index: 2;
-  right: 17px;
-  bottom: 16px;
-  left: 17px;
+  z-index: 3;
+  right: 12px;
+  bottom: 10px;
+  left: 12px;
   display: flex;
-  gap: 10px;
-  align-items: flex-end;
+  gap: 8px;
+  align-items: baseline;
   justify-content: space-between;
+  pointer-events: none;
 }
 
 .brand-slot__title strong {
   overflow: hidden;
-  font-size: 13px;
-  font-weight: 560;
-  letter-spacing: -0.025em;
-  line-height: 1;
+  font-size: var(--tile-title-size, 13px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .brand-slot__title small {
   flex: 0 0 auto;
-  color: rgba(224, 231, 245, 0.44);
+  color: rgba(224, 231, 245, 0.5);
   font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .sport-tile--hero {
@@ -271,54 +308,28 @@ button {
   font-size: 31px;
 }
 
-.sport-tile--hero .brand-slot__meta {
-  top: 30px;
-  right: 32px;
-  left: 32px;
-  font-size: 11px;
-}
-
 .sport-tile--hero .brand-slot__title {
-  right: 32px;
-  bottom: 30px;
-  left: 32px;
+  right: 18px;
+  bottom: 14px;
+  left: 18px;
 }
 
 .sport-tile--hero .brand-slot__title strong {
-  font-size: clamp(27px, 3.2vw, 48px);
-  letter-spacing: -0.055em;
+  font-size: var(--tile-title-size-center, 16px);
 }
 
 .sport-tile--hero .brand-slot__title small {
   font-size: 11px;
 }
 
-.sport-tile--small .brand-slot__meta {
-  top: 11px;
-  right: 11px;
-  left: 11px;
-  font-size: 7px;
-}
-
 .sport-tile--small .brand-slot__title {
-  right: 11px;
-  bottom: 10px;
-  left: 11px;
+  right: 8px;
+  bottom: 7px;
+  left: 8px;
 }
 
 .sport-tile--small .brand-slot__title strong {
-  font-size: 10px;
-}
-
-.sport-tile--small .brand-slot__title small {
-  display: none;
-}
-
-.sport-tile--small.sport-tile--portrait .brand-slot__title,
-.sport-tile--small.sport-tile--wide .brand-slot__title {
-  align-items: flex-start;
-  flex-direction: column;
-  gap: 4px;
+  font-size: var(--tile-title-size-small, 12px);
 }
 
 .sport-tile--small.sport-tile--square .brand-slot__mark {
@@ -577,7 +588,14 @@ button {
   background-size: 42px 42px;
 }
 
+.modal-visual--media {
+  background-position: center;
+  background-size: cover;
+}
+
 .modal-visual--media img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -623,7 +641,7 @@ button {
 }
 
 .modal-slot__cross::after {
-  content: "B";
+  content: "";
   font-size: 34px;
   font-weight: 520;
 }
@@ -655,6 +673,42 @@ button {
   color: rgba(220, 228, 241, 0.64);
   font-size: 15px;
   line-height: 1.75;
+}
+
+.modal-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  margin-top: 28px;
+  padding: 0 20px;
+  border-radius: 999px;
+  border: 1px solid #ff3855;
+  color: #fff;
+  background: linear-gradient(145deg, #ff3f5b, #ea1737);
+  box-shadow: 0 14px 34px rgba(223, 12, 52, 0.3);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.modal-cta:hover {
+  transform: translateY(-1px);
+}
+
+.modal-cta:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.modal-cta svg {
+  width: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
 }
 
 .modal-meta {
@@ -815,4 +869,9 @@ button {
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
   }
+}
+
+.modal-visual:has(.brand-slot__logo) .modal-slot__cross,
+.modal-visual:has(.brand-slot__logo) > p {
+  display: none;
 }

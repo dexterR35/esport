@@ -157,7 +157,7 @@ const pointerFocusCandidate = await evaluate(`(() => {
       };
     })
     .filter((rect) =>
-      rect.id !== 'brand-slot-001' &&
+      rect.id !== 'slot-001' &&
       rect.right > 40 && rect.left < innerWidth - 40 &&
       rect.bottom > 100 && rect.top < innerHeight - 100
     )
@@ -205,7 +205,7 @@ await wait(1000);
 const cameraBeforeActivation = await evaluate(
   `getComputedStyle(document.querySelector('.map-world')).transform`,
 );
-await evaluate(`document.querySelector('[data-tile-id="brand-slot-001"]').click()`);
+await evaluate(`document.querySelector('[data-tile-id="slot-001"]').click()`);
 await wait(360);
 const activationDuringFlight = await evaluate(`({
   modalOpen: Boolean(document.querySelector('[role="dialog"]')),

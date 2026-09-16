@@ -2,16 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { CustomEase } from 'gsap/CustomEase';
 import { MAP_CONFIG, clampCamera } from '../lib/layout';
+import { SETTINGS } from '../settings';
 
-const DRAG_THRESHOLD = 6;
-const KEYBOARD_PAN_STEP = 130;
+const DRAG_THRESHOLD = SETTINGS.camera.dragThreshold;
+const KEYBOARD_PAN_STEP = SETTINGS.camera.keyboardPanStep;
+
+const toEasePath = ([x1, y1, x2, y2]) => `M0,0 C${x1},${y1} ${x2},${y2} 1,1`;
 
 gsap.registerPlugin(CustomEase);
 
-const MAP_CAMERA_EASE = CustomEase.create(
-  'mapCameraEase',
-  'M0,0 C0.35,0.18 0.22,1 1,1',
-);
+const MAP_CAMERA_EASE = CustomEase.create('mapCameraEase', toEasePath(SETTINGS.camera.ease));
+const INTRO_EASE = CustomEase.create('mapIntroEase', toEasePath(SETTINGS.intro.ease));
 
 function getDistance(first, second) {
   return Math.hypot(second.x - first.x, second.y - first.y);
@@ -41,7 +42,12 @@ export function useMapCamera({
   const initializedRef = useRef(false);
   const reduceMotionRef = useRef(false);
   const wasDisabledRef = useRef(disabled);
+  const introTweenRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
+  // Pornește ca `true` ca imaginile să nu înceapă încărcarea înaintea primului frame al intro-ului.
+  const [isIntroPlaying, setIsIntroPlaying] = useState(
+    () => SETTINGS.intro.enabled && !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
   const gestureRef = useRef({
     mode: 'idle',
     pointers: new Map(),
@@ -80,8 +86,12 @@ export function useMapCamera({
 
   const applyCamera = useCallback(
     (camera, options = {}) => {
-      const { immediate = false, padding = MAP_CONFIG.edgePadding } = options;
-      cameraRef.current = clampCamera(camera, viewportSizeRef.current, padding);
+      const {
+        immediate = false,
+        padding = MAP_CONFIG.edgePadding,
+        minScale = MAP_CONFIG.minScale,
+      } = options;
+      cameraRef.current = clampCamera(camera, viewportSizeRef.current, padding, minScale);
 
       if (immediate) {
         if (frameRef.current) cancelAnimationFrame(frameRef.current);
@@ -97,6 +107,9 @@ export function useMapCamera({
   );
 
   const stopMotion = useCallback(() => {
+    // O acțiune care preia camera în timpul intro-ului (ex. activare de la tastatură)
+    // pornește din poziția finală, nu dintr-un zoom sub limita normală.
+    introTweenRef.current?.progress(1);
     cameraTweenRef.current?.kill();
     cameraTweenRef.current = null;
     zoomTargetRef.current = null;
@@ -199,6 +212,55 @@ export function useMapCamera({
     [animateCamera, applyCamera],
   );
 
+  const playIntro = useCallback(
+    (tile) => {
+      if (!tile) return;
+      const centerX = tile.x + tile.width / 2;
+      const centerY = tile.y + tile.height / 2;
+      const { initialScale } = MAP_CONFIG;
+      const { startZoom: introScale, duration: introDuration, delay } = SETTINGS.intro;
+      const state = { progress: 0 };
+
+      // Scale-ul este interpolat geometric: fiecare moment al zoom-ului pare la fel
+      // de rapid, iar centrul brandului rămâne fix în mijlocul ecranului.
+      const paint = () => {
+        const viewport = viewportSizeRef.current;
+        const scale = introScale * (initialScale / introScale) ** state.progress;
+        applyCamera(
+          {
+            scale,
+            tx: viewport.width / 2 - centerX * scale,
+            ty: viewport.height / 2 - centerY * scale,
+          },
+          { immediate: true, minScale: introScale },
+        );
+      };
+
+      paint();
+      setIsIntroPlaying(true);
+      introTweenRef.current = gsap.to(state, {
+        progress: 1,
+        duration: introDuration,
+        delay,
+        ease: INTRO_EASE,
+        onUpdate: paint,
+        onComplete: () => {
+          introTweenRef.current = null;
+          setIsIntroPlaying(false);
+        },
+      });
+    },
+    [applyCamera],
+  );
+
+  /** În timpul intro-ului, orice gest îl accelerează în loc să îl întrerupă brusc. */
+  const hurryIntro = useCallback(() => {
+    const intro = introTweenRef.current;
+    if (!intro) return false;
+    intro.delay(0).timeScale(4);
+    return true;
+  }, []);
+
   const reset = useCallback(() => {
     centerOnTile(featuredTile, MAP_CONFIG.initialScale, true);
     viewportRef.current?.focus({ preventScroll: true });
@@ -231,7 +293,7 @@ export function useMapCamera({
       const proxy = { ...cameraRef.current };
       cameraTweenRef.current = gsap.to(proxy, {
         ...destination,
-        duration: 0.46,
+        duration: SETTINGS.zoom.wheelDuration,
         ease: MAP_CAMERA_EASE,
         overwrite: true,
         onUpdate: () => applyCamera(proxy, { immediate: true }),
@@ -314,9 +376,17 @@ export function useMapCamera({
 
       if (!initializedRef.current && nextSize.width && nextSize.height) {
         initializedRef.current = true;
-        centerOnTile(featuredTile, MAP_CONFIG.initialScale, false);
+        if (!SETTINGS.intro.enabled || reduceMotionRef.current || !featuredTile) {
+          centerOnTile(featuredTile, MAP_CONFIG.initialScale, false);
+          setIsIntroPlaying(false);
+        } else {
+          playIntro(featuredTile);
+        }
         return;
       }
+
+      // Intro-ul recalculează centrul la fiecare frame din noua dimensiune.
+      if (introTweenRef.current) return;
 
       if (previousSize.width && previousSize.height) {
         const centerWorldX = (previousSize.width / 2 - camera.tx) / camera.scale;
@@ -331,7 +401,7 @@ export function useMapCamera({
 
     observer.observe(viewport);
     return () => observer.disconnect();
-  }, [applyCamera, centerOnTile, featuredTile, viewportRef]);
+  }, [applyCamera, centerOnTile, featuredTile, playIntro, viewportRef]);
 
   useEffect(() => {
     const wasDisabled = wasDisabledRef.current;
@@ -358,6 +428,8 @@ export function useMapCamera({
 
   useEffect(
     () => () => {
+      introTweenRef.current?.kill();
+      introTweenRef.current = null;
       stopMotion();
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
     },
@@ -368,6 +440,7 @@ export function useMapCamera({
     (event) => {
       if (disabled || event.ctrlKey || event.metaKey) return;
       event.preventDefault();
+      if (hurryIntro()) return;
       const delta = event.deltaY * (
         event.deltaMode === WheelEvent.DOM_DELTA_LINE
           ? 16
@@ -375,9 +448,9 @@ export function useMapCamera({
             ? viewportSizeRef.current.height
             : 1
       );
-      smoothZoomBy(Math.exp(-delta * 0.00105), event.clientX, event.clientY);
+      smoothZoomBy(Math.exp(-delta * SETTINGS.zoom.wheelSpeed), event.clientX, event.clientY);
     },
-    [disabled, smoothZoomBy],
+    [disabled, hurryIntro, smoothZoomBy],
   );
 
   useEffect(() => {
@@ -390,6 +463,7 @@ export function useMapCamera({
   const onPointerDown = useCallback(
     (event) => {
       if (disabled || (event.pointerType === 'mouse' && event.button !== 0)) return;
+      if (hurryIntro()) return;
       stopMotion();
       const viewport = viewportRef.current;
       const gesture = gestureRef.current;
@@ -430,7 +504,7 @@ export function useMapCamera({
         setIsDragging(true);
       }
     },
-    [disabled, stopMotion, viewportRef],
+    [disabled, hurryIntro, stopMotion, viewportRef],
   );
 
   const onPointerMove = useCallback(
@@ -527,6 +601,10 @@ export function useMapCamera({
   const onKeyDown = useCallback(
     (event) => {
       if (disabled || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (hurryIntro()) {
+        event.preventDefault();
+        return;
+      }
       const camera = cameraRef.current;
       const viewport = viewportSizeRef.current;
       let handled = true;
@@ -536,19 +614,20 @@ export function useMapCamera({
       else if (event.key === 'ArrowUp') animateCamera({ ...camera, ty: camera.ty + KEYBOARD_PAN_STEP }, 0.36);
       else if (event.key === 'ArrowDown') animateCamera({ ...camera, ty: camera.ty - KEYBOARD_PAN_STEP }, 0.36);
       else if (event.key === '+' || event.key === '=') {
-        smoothZoomBy(1.1, viewport.width / 2, viewport.height / 2);
+        smoothZoomBy(SETTINGS.zoom.keyboardStep, viewport.width / 2, viewport.height / 2);
       } else if (event.key === '-' || event.key === '_') {
-        smoothZoomBy(1 / 1.1, viewport.width / 2, viewport.height / 2);
+        smoothZoomBy(1 / SETTINGS.zoom.keyboardStep, viewport.width / 2, viewport.height / 2);
       } else if (event.key === '0') reset();
       else handled = false;
 
       if (handled) event.preventDefault();
     },
-    [animateCamera, disabled, reset, smoothZoomBy],
+    [animateCamera, disabled, hurryIntro, reset, smoothZoomBy],
   );
 
   return {
     isDragging,
+    isIntroPlaying,
     reset,
     centerOnTile,
     activateTile,

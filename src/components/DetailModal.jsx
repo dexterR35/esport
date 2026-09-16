@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { getImageSources, MODAL_IMAGE_SIZES } from '../lib/images';
+import { SETTINGS } from '../settings';
 
-const EXIT_DURATION = 240;
+const EXIT_DURATION = SETTINGS.modal.closeDuration;
 
 function CloseIcon() {
   return (
@@ -60,10 +62,8 @@ export default function DetailModal({ content, onAfterClose }) {
   }, [close]);
 
   const isSport = content.kind === 'sport';
-  const title = isSport ? content.item.title : 'Rămâi aproape de proiect';
-  const detailImage = isSport
-    ? (content.item.detailImage || content.item.image || content.item.thumbnail)
-    : null;
+  const item = isSport ? content.item : null;
+  const detailImage = isSport ? getImageSources(item.modal.image) : null;
 
   return createPortal(
     <div
@@ -95,44 +95,68 @@ export default function DetailModal({ content, onAfterClose }) {
               className={`modal-visual ${
                 detailImage ? 'modal-visual--media' : 'modal-visual--placeholder'
               }`}
-              style={{ '--modal-color': content.item.color }}
+              style={{
+                '--modal-color': item.color,
+                backgroundImage: detailImage ? `url("${item.modal.image.blur}")` : undefined,
+              }}
             >
               {detailImage ? (
                 <img
-                  src={detailImage}
-                  srcSet={content.item.detailSrcSet || undefined}
-                  sizes={content.item.detailSizes || '(max-width: 760px) 100vw, 52vw'}
-                  width={content.item.detailImageWidth || content.item.imageWidth || undefined}
-                  height={content.item.detailImageHeight || content.item.imageHeight || undefined}
-                  alt={content.item.imageAlt || content.item.title}
+                  src={detailImage.src}
+                  srcSet={detailImage.srcSet}
+                  sizes={MODAL_IMAGE_SIZES}
+                  width={detailImage.width}
+                  height={detailImage.height}
+                  alt={item.imageAlt}
                   decoding="async"
                   fetchPriority="high"
                 />
               ) : (
                 <>
-                  <span className="modal-slot__code">{content.item.code}</span>
-                  <span className="modal-slot__number">
-                    {String(content.item.index).padStart(2, '0')}
-                  </span>
+                  <span className="modal-slot__code">{item.category}</span>
+                  <span className="modal-slot__number">{item.number}</span>
                   <div className="modal-slot__cross" aria-hidden="true" />
-                  <p>IMAGE PLACEHOLDER</p>
+                  <p>IMAGINE ÎN CURÂND</p>
                 </>
+              )}
+              {item.logo && (
+                <span className="brand-slot__logo brand-slot__logo--modal">
+                  <img
+                    src={item.logo.src}
+                    alt={item.logo.alt}
+                    width={item.logo.width}
+                    height={item.logo.height}
+                  />
+                </span>
               )}
             </div>
             <div className="modal-copy">
-              <p className="modal-kicker">{content.item.category}</p>
-              <h2 id="modal-title">{content.item.title}</h2>
-              <p>{content.item.description}</p>
+              <p className="modal-kicker">{item.category}</p>
+              <h2 id="modal-title">{item.modal.title}</h2>
+              <p>{item.modal.body}</p>
+              {item.modal.cta && (
+                <a
+                  className="modal-cta"
+                  href={item.modal.cta.href}
+                  target={item.modal.cta.external ? '_blank' : undefined}
+                  rel={item.modal.cta.external ? 'noopener noreferrer' : undefined}
+                >
+                  {item.modal.cta.label}
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M7 17L17 7M9 7h8v8" />
+                  </svg>
+                </a>
+              )}
               <div className="modal-meta" aria-label="Detalii slot">
-                <span>Modul din grid / spațiu de brand</span>
-                <span>Pregătit pentru imagine sau identitate vizuală</span>
+                <span>Box {item.number}</span>
+                <span>Format {item.spanColumns} × {item.spanRows}</span>
               </div>
             </div>
           </>
         ) : (
           <div className="modal-copy modal-copy--subscription">
             <p className="modal-kicker">GRID UPDATES</p>
-            <h2 id="modal-title">{title}</h2>
+            <h2 id="modal-title">Rămâi aproape de proiect</h2>
             <p>
               Acesta este un ecran demonstrativ. Formularul și identitatea finală a proiectului
               pot fi conectate ulterior, fără să schimbăm experiența hărții.

@@ -1,12 +1,29 @@
 import { useEffect } from 'react';
+import { SETTINGS } from '../settings';
 
 const IMAGE_SELECTOR = '.sport-tile__media[data-src]';
 
-export function useProgressiveImages({ viewportRef, worldRef, dependency }) {
+export function useProgressiveImages({ viewportRef, worldRef, dependency, paused = false }) {
   useEffect(() => {
     const viewport = viewportRef.current;
     const world = worldRef.current;
     if (!viewport || !world) return undefined;
+
+    // În timpul intro-ului toată harta e vizibilă; încărcarea tuturor imaginilor ar
+    // concura cu animația. Până atunci se văd placeholderele blurate, iar imaginea
+    // centrală (data-preload="high") se încarcă imediat.
+    if (paused) {
+      world.querySelectorAll(`${IMAGE_SELECTOR}[data-preload="high"]`).forEach((image) => {
+        if (image.dataset.sizes) image.sizes = image.dataset.sizes;
+        if (image.dataset.srcset) image.srcset = image.dataset.srcset;
+        image.src = image.dataset.src;
+        image.decode().then(
+          () => image.classList.add('sport-tile__media--loaded'),
+          () => {},
+        );
+      });
+      return undefined;
+    }
 
     const images = [...world.querySelectorAll(IMAGE_SELECTOR)];
     if (!images.length) return undefined;
@@ -106,36 +123,46 @@ export function useProgressiveImages({ viewportRef, worldRef, dependency }) {
       };
     }
 
-    const observer = new IntersectionObserver(
+    // Două zone: imaginile se încarcă din timp (loadMargin în jurul ecranului), dar se
+    // eliberează abia mult mai departe (unloadMargin). Diferența evită reîncărcarea
+    // și fade-ul repetat când harta este trasă înainte și înapoi.
+    const loadObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          seenIntersecting.add(entry.target);
+          loadImage(entry.target);
+        });
+      },
+      { root: viewport, rootMargin: SETTINGS.images.loadMargin, threshold: 0 },
+    );
+
+    const unloadObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           const image = entry.target;
-          if (entry.isIntersecting) {
-            seenIntersecting.add(image);
-            loadImage(image);
-          } else if (seenIntersecting.has(image)) {
-            // Rețeaua rămâne în cache, dar sursa este eliminată pentru ca
-            // browserul să poată elibera bitmap-ul decodat al imaginilor îndepărtate.
+          // Rețeaua rămâne în cache, dar sursa este eliminată pentru ca
+          // browserul să poată elibera bitmap-ul decodat al imaginilor îndepărtate.
+          if (!entry.isIntersecting && seenIntersecting.has(image)) {
+            seenIntersecting.delete(image);
             unloadImage(image);
           }
         });
       },
-      {
-        root: viewport,
-        rootMargin: '120% 120%',
-        threshold: 0,
-      },
+      { root: viewport, rootMargin: SETTINGS.images.unloadMargin, threshold: 0 },
     );
 
     images.forEach((image) => {
-      observer.observe(image);
+      loadObserver.observe(image);
+      unloadObserver.observe(image);
       if (image.dataset.preload === 'high') loadImage(image);
     });
 
     return () => {
       disposed = true;
-      observer.disconnect();
+      loadObserver.disconnect();
+      unloadObserver.disconnect();
       records.forEach((record, image) => removeListeners(image, record));
     };
-  }, [dependency, viewportRef, worldRef]);
+  }, [dependency, paused, viewportRef, worldRef]);
 }

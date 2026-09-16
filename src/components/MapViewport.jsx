@@ -10,7 +10,9 @@ import {
 import { gsap } from 'gsap';
 import { useMapCamera } from '../hooks/useMapCamera';
 import { useProgressiveImages } from '../hooks/useProgressiveImages';
+import { MODAL_IMAGE_SIZES, preloadImage } from '../lib/images';
 import { WORLD_SIZE } from '../lib/layout';
+import { SETTINGS } from '../settings';
 import MapTile from './MapTile';
 
 const MapViewport = forwardRef(function MapViewport(
@@ -31,7 +33,16 @@ const MapViewport = forwardRef(function MapViewport(
     onZoomChange,
     onActivate: onSelect,
   });
-  useProgressiveImages({ viewportRef, worldRef, dependency: tiles });
+  useProgressiveImages({
+    viewportRef,
+    worldRef,
+    dependency: tiles,
+    paused: camera.isIntroPlaying,
+  });
+  const preloadModalImage = useCallback(
+    (tile) => preloadImage(tile.modal.image, MODAL_IMAGE_SIZES),
+    [],
+  );
 
   useLayoutEffect(() => {
     const world = worldRef.current;
@@ -53,8 +64,8 @@ const MapViewport = forwardRef(function MapViewport(
           autoAlpha: 1,
           scale: 1,
           y: 0,
-          duration: 0.82,
-          stagger: { each: 0.003, from: 0 },
+          duration: SETTINGS.tiles.revealDuration,
+          stagger: { each: SETTINGS.tiles.revealStagger, from: 0 },
           ease: 'power3.out',
           clearProps: 'transform',
         },
@@ -102,7 +113,7 @@ const MapViewport = forwardRef(function MapViewport(
       className={`map-viewport${camera.isDragging ? ' map-viewport--dragging' : ''}`}
       tabIndex={0}
       role="region"
-      aria-label="Hartă interactivă cu sloturi media"
+      aria-label="Galerie interactivă NetBet Sport"
       aria-describedby="map-instructions"
       {...camera.viewportHandlers}
     >
@@ -118,6 +129,7 @@ const MapViewport = forwardRef(function MapViewport(
               tile={tile}
               onKeyboardActivate={camera.activateTile}
               onFocus={camera.bringTileIntoView}
+              onPreload={preloadModalImage}
             />
           ))}
         </div>

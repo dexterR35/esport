@@ -1,12 +1,18 @@
+import { SETTINGS } from '../settings.js';
+
+// Valorile se editează în src/settings.js.
 export const MAP_CONFIG = {
-  columns: 50,
-  rows: 32,
-  cellSize: 190,
-  minScale: 0.42,
-  maxScale: 1.12,
-  initialScale: 0.76,
+  columns: SETTINGS.grid.columns,
+  rows: SETTINGS.grid.rows,
+  cellSize: SETTINGS.grid.cellSize,
+  minScale: SETTINGS.zoom.min,
+  maxScale: SETTINGS.zoom.max,
+  initialScale: SETTINGS.zoom.initial,
   edgePadding: 0,
 };
+
+// Niciun box (în afară de cel central) nu depășește atâtea celule pe o latură.
+const MAX_SPAN = SETTINGS.grid.maxSpan;
 
 export const WORLD_SIZE = {
   width: MAP_CONFIG.columns * MAP_CONFIG.cellSize,
@@ -68,8 +74,8 @@ function toTile(item, region) {
 
 function chooseSplitDirection(region, key) {
   const { columns, rows } = region;
-  if (columns > 6 && rows <= 6) return 'vertical';
-  if (rows > 6 && columns <= 6) return 'horizontal';
+  if (columns > MAX_SPAN && rows <= MAX_SPAN) return 'vertical';
+  if (rows > MAX_SPAN && columns <= MAX_SPAN) return 'horizontal';
   if (columns / rows >= 1.45) return 'vertical';
   if (rows / columns >= 1.45) return 'horizontal';
   return unitFromString(`${key}-direction`) > 0.5 ? 'vertical' : 'horizontal';
@@ -80,9 +86,9 @@ function partitionRegion(region, key, result, depth = 0) {
   const area = columns * rows;
   const sizeRoll = unitFromString(`${key}-${column}-${row}-${depth}-size`);
   const targetArea = sizeRoll < 0.17
-    ? 16
+    ? MAX_SPAN * MAX_SPAN
     : 3 + Math.floor(unitFromString(`${key}-${column}-${row}-${depth}-target`) * 10);
-  const dimensionsFit = columns <= 6 && rows <= 6;
+  const dimensionsFit = columns <= MAX_SPAN && rows <= MAX_SPAN;
 
   if ((dimensionsFit && area <= targetArea) || area === 1) {
     result.push(region);
@@ -173,12 +179,12 @@ function mergeAlignedRepeats(inputRegions) {
           first.row === second.row &&
           (first.column + first.columns === second.column ||
             second.column + second.columns === first.column) &&
-          first.columns + second.columns <= 8;
+          first.columns + second.columns <= MAX_SPAN;
         const stacked =
           first.column === second.column &&
           (first.row + first.rows === second.row ||
             second.row + second.rows === first.row) &&
-          first.rows + second.rows <= 8;
+          first.rows + second.rows <= MAX_SPAN;
 
         if (!sideBySide && !stacked) continue;
 
@@ -331,6 +337,105 @@ function removeRepeatedNeighbors(inputRegions, fixedRegions) {
 }
 
 /**
+ * Boxurile lungi și înguste (ex. 1×4, 4×1, 1×3) se împart în două pe latura lungă,
+ * până când raportul laturilor nu mai depășește `maxAspect`.
+ * Prima jumătate păstrează indexul (deci numărul slotului), a doua se adaugă la final,
+ * ca numerele celorlalte boxuri să nu se schimbe.
+ */
+function splitElongated(region, maxAspect) {
+  const { columns, rows } = region;
+  if (Math.max(columns, rows) / Math.min(columns, rows) <= maxAspect) return [region];
+  const pieces = columns > rows
+    ? [
+        { ...region, columns: Math.ceil(columns / 2) },
+        { ...region, column: region.column + Math.ceil(columns / 2), columns: Math.floor(columns / 2) },
+      ]
+    : [
+        { ...region, rows: Math.ceil(rows / 2) },
+        { ...region, row: region.row + Math.ceil(rows / 2), rows: Math.floor(rows / 2) },
+      ];
+  return pieces.flatMap((piece) => splitElongated(piece, maxAspect));
+}
+
+function splitElongatedRegions(inputRegions, maxAspect) {
+  const regions = [...inputRegions];
+  const extra = [];
+
+  regions.forEach((region, index) => {
+    const [first, ...rest] = splitElongated(region, maxAspect);
+    regions[index] = first;
+    extra.push(...rest);
+  });
+
+  return [...regions, ...extra];
+}
+
+const FEATURED_REGION = {
+  columns: SETTINGS.grid.centerColumns,
+  rows: SETTINGS.grid.centerRows,
+  column: Math.floor((MAP_CONFIG.columns - SETTINGS.grid.centerColumns) / 2),
+  row: Math.floor((MAP_CONFIG.rows - SETTINGS.grid.centerRows) / 2),
+};
+
+// Layout-ul este determinist (seed fix), deci slotul cu un anumit număr ocupă
+// mereu aceeași poziție. Conținutul din slots.json se leagă sigur de acest număr.
+const SURROUNDING_REGIONS = splitElongatedRegions(
+  removeRepeatedNeighbors(
+    mergeAlignedRepeats(createSurroundingRegions(FEATURED_REGION, SETTINGS.grid.seed)),
+    [FEATURED_REGION],
+  ),
+  SETTINGS.grid.maxAspect,
+);
+
+/**
+ * Împărțiri manuale din settings.js → grid.splits:
+ *  'columns' = două boxuri alăturate, 'rows' = două boxuri unul peste altul.
+ * Boxurile rămân pe celule întregi: dacă latura are un număr impar de celule, jumătățile
+ * diferă cu o celulă (ex. 3 rânduri → 2 + 1), iar o jumătate prea îngustă este împărțită
+ * din nou după `maxAspect` (ex. 4×1 → 2×1 + 2×1).
+ * Prima bucată păstrează numărul boxului, celelalte primesc următoarele numere libere.
+ */
+function applyManualSplits(regions, splits, maxAspect) {
+  const result = [...regions];
+  Object.keys(splits)
+    .sort()
+    .forEach((number) => {
+      const index = Number(number) - 1;
+      const region = result[index];
+      const mode = splits[number];
+      const size = mode === 'columns' ? region?.columns : region?.rows;
+      if (!region || index === 0 || !['columns', 'rows'].includes(mode) || size < 2) {
+        console.warn(`settings.js › grid.splits: "${number}: ${mode}" nu poate fi aplicat.`);
+        return;
+      }
+      const first = Math.ceil(size / 2);
+      const halves = mode === 'columns'
+        ? [
+            { ...region, columns: first },
+            { ...region, column: region.column + first, columns: size - first },
+          ]
+        : [
+            { ...region, rows: first },
+            { ...region, row: region.row + first, rows: size - first },
+          ];
+      const [kept, ...added] = halves.flatMap((half) => splitElongated(half, maxAspect));
+      result[index] = kept;
+      result.push(...added);
+    });
+  return result;
+}
+
+/** Regiunea fiecărui slot, în ordinea numerelor: [0] = 001 (central), [1] = 002… */
+export const SLOT_REGIONS = applyManualSplits(
+  [FEATURED_REGION, ...SURROUNDING_REGIONS],
+  SETTINGS.grid.splits ?? {},
+  SETTINGS.grid.maxAspect,
+);
+
+/** Numărul exact de sloturi din hartă: canvasul central + regiunile din jur. */
+export const SLOT_COUNT = SLOT_REGIONS.length;
+
+/**
  * Împarte recursiv fiecare zonă din jurul canvasului central. Regiunile rezultate
  * formează un mozaic complet: nu există găuri, gap sau margini neacoperite.
  */
@@ -344,26 +449,14 @@ export function generateMosaicLayout(items) {
   }
 
   const [featuredIndex] = featuredIndexes;
-  const featured = items[featuredIndex];
-  const featuredRegion = {
-    columns: 6,
-    rows: 3,
-    column: Math.floor((MAP_CONFIG.columns - 6) / 2),
-    row: Math.floor((MAP_CONFIG.rows - 3) / 2),
-  };
-  const regions = removeRepeatedNeighbors(
-    mergeAlignedRepeats(createSurroundingRegions(featuredRegion, 472)),
-    [featuredRegion],
-  );
-
   const surroundingItems = items.filter((_, index) => index !== featuredIndex);
-  if (surroundingItems.length < regions.length) {
-    throw new Error(`Mosaic layout requires at least ${regions.length + 1} items.`);
+  if (surroundingItems.length < SLOT_REGIONS.length - 1) {
+    throw new Error(`Mosaic layout requires at least ${SLOT_COUNT} items.`);
   }
 
-  const result = [toTile(featured, featuredRegion)];
+  const result = [toTile(items[featuredIndex], FEATURED_REGION)];
 
-  regions.forEach((region, index) => {
+  SLOT_REGIONS.slice(1).forEach((region, index) => {
     result.push(toTile(surroundingItems[index], region));
   });
 
@@ -379,8 +472,13 @@ export function clampAxis(translation, viewport, world, scale, padding) {
   return Math.min(padding, Math.max(minimum, translation));
 }
 
-export function clampCamera(camera, viewport, padding = MAP_CONFIG.edgePadding) {
-  const scale = Math.min(MAP_CONFIG.maxScale, Math.max(MAP_CONFIG.minScale, camera.scale));
+export function clampCamera(
+  camera,
+  viewport,
+  padding = MAP_CONFIG.edgePadding,
+  minScale = MAP_CONFIG.minScale,
+) {
+  const scale = Math.min(MAP_CONFIG.maxScale, Math.max(minScale, camera.scale));
   const paddingX = typeof padding === 'number' ? padding : (padding?.x ?? MAP_CONFIG.edgePadding);
   const paddingY = typeof padding === 'number' ? padding : (padding?.y ?? MAP_CONFIG.edgePadding);
 

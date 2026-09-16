@@ -4,6 +4,9 @@ import HeroTopActions from './components/HeroTopActions';
 import MapViewport from './components/MapViewport';
 import { galleryItems, heroActions } from './data/gallery';
 import { generateMosaicLayout } from './lib/layout';
+import { SETTINGS } from './settings';
+
+const zoomPercent = (scale) => Math.round((scale / SETTINGS.zoom.initial) * 100);
 
 export default function App() {
   const tiles = useMemo(() => generateMosaicLayout(galleryItems), []);
@@ -90,8 +93,8 @@ export default function App() {
           className="zoom-readout"
           role="meter"
           aria-label="Nivel zoom"
-          aria-valuemin="55"
-          aria-valuemax="147"
+          aria-valuemin={zoomPercent(SETTINGS.zoom.min)}
+          aria-valuemax={zoomPercent(SETTINGS.zoom.max)}
           aria-valuenow="100"
         >
           <span className="zoom-glyph" aria-hidden="true">−</span>
